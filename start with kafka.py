@@ -9,3 +9,9 @@
 (7) check created topic: kafka-topics --list --zookeeper localhost:2181 (inside the bin/windows start cmd)
 (8) create a consumer: kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic sample --from-beginning (inside the bin/windows start cmd)
 (9) create a producer: kafka-console-producer.bat --broker-list localhost:9092 --topic sample (inside the bin/windows start cmd)
+        
+install java8
+(1) download and install
+(2) edit the system environment variables: environment variable:
+        (1) under system variables: Path: create new: C:\Program Files\Java\jre1.8.0_341\bin
+        (2) under system variables: new:create JAVA_HOME:C:\Program Files\Java\jre1.8.0_341
