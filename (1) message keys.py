@@ -9,3 +9,7 @@
 To produce data to a topic, a producer must provide the Kafka client with...
 you only need to connect to one broker (any broker) and just provide the topic name you want to write to. 
 Kafka Clients will route your data to the appropriate brokers and partitions for you!
+
+To read data from a topic, the following configuration is needed for the consumers
+you only need to connect to one broker (any broker) and just provide the topic name you want to read from. 
+Kafka will route your calls to the appropriate brokers and partitions for you!
