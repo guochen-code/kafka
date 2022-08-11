@@ -15,3 +15,6 @@ you only need to connect to one broker (any broker) and just provide the topic n
 Kafka will route your calls to the appropriate brokers and partitions for you!
 
 Two consumers that have the same group.id (consumer group id) will read from mutually exclusive partitions
+
+Kafka Consumer Offsets are stored in...
+since Kafka 0.9, in the topic __consumer_offsets
