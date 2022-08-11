@@ -13,3 +13,5 @@ Kafka Clients will route your data to the appropriate brokers and partitions for
 To read data from a topic, the following configuration is needed for the consumers
 you only need to connect to one broker (any broker) and just provide the topic name you want to read from. 
 Kafka will route your calls to the appropriate brokers and partitions for you!
+
+Two consumers that have the same group.id (consumer group id) will read from mutually exclusive partitions
