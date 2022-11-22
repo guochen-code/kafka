@@ -15,3 +15,7 @@ install java8
 (2) edit the system environment variables: environment variable:
         (1) under system variables: Path: create new: C:\Program Files\Java\jre1.8.0_341\bin
         (2) under system variables: new:create JAVA_HOME:C:\Program Files\Java\jre1.8.0_341
+
+                        
+java 8 download: https://www.oracle.com/ca-en/java/technologies/downloads/#java8-windows
+kafka download: https://kafka.apache.org/downloads
