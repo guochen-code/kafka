@@ -95,4 +95,17 @@ Content-Type: application/vnd.kafka.json.v2+json
 {"records":[{"value":{"name":"testUser"}}]}
 
 
+************************************************************************************************************************************************
+aws big data blog
+govern how your client interact with apache kafka using api gateway
+
+why: ec2 not have all the supports, will be very complex for rest proxy for IP level filtering or use API key acess based authentication
+
+(1) create API gateway
+endpoint url: http://<public ip of ec2>:8082/topics/{proxy} # able to dynamically change topic name here
+
+create a new topic
+open a new consumer window
+
+API Gateway has wrapped our kafka rest proxy, made it more secure, it is https now
 
