@@ -1,0 +1,98 @@
+step-1
+---------------
+create vpc -- name -- virtual-private-cloud IPv4 CIDR -- 10.0.0.0/16
+Host address range -- 10.0.0.1 - 10.0.255.254
+
+step-2
+---------------
+create 2 public subnets for 2 brokers
+Public-Subnet-A--10.0.0.0/24
+Host address range -- 10.0.0.1 - 10.0.0.254
+
+Public-Subnet-B--10.0.1.0/24                         #### note need to create in a different AZ because brokers will be in different AZs
+Host address range -- 10.0.1.1 - 10.0.1.254
+
+step-3
+---------------
+check the default route table -- you will see the above 2 subnets have not been explicitly associated with any route tables
+and are therefore associated with the main route table
+
+step-4
+---------------
+create a IGW and connect with vpc (Actions-choose "Attach to VPC")
+
+step-5
+---------------
+add the IGW in default route table (go to rounte tables - choose the right route table - edit routes - destination: 0.0.0.0/0; target: my Internet Gateway
+
+step-6
+---------------
+launch MSK cluster with vpc you create, unauthorised access allowed (no need trust or key store explicitly), plaintext encryption
+(keep security group as it is - use default, no need to create a new)
+
+step-7
+---------------
+launch linux ec2
+in the list network choose the vpc previously created
+in the list auto-assign public, choose enable
+
+step-8
+---------------
+on the client for MSK has been created, the security group rules must be configured to allow the connection between the cluster and the client that
+we have just created
+for that, add the security group id of ec2 to msk cluster security group all traffic
+
+repeat tehse steps to add an inbound rule in the security group that corresponds to your client computer to allow it to 
+receive traffic from the security group from the vpc.now your client computer can communicate bidirectionally with the MSK cluster
+
+once this is done, the newly created and configured client can be assessed.
+
+### (in ec2 - edit inbound rules - type: all traffic + copy and paste MSK security group - save rules
+open MSK security group - edit inbound rules - type: all traffic + ec2 security group - save rules)
+
+step-9
+--------------- ssh into ec2
+sudo yum install java-1.8.0-openjdk
+wget https://archive.apache.org/dist/kafka/2.8.1/kafka_2.12-2.8.1.tgz # version must match with MSK version
+tar -xvf kafka_2.12-2.8.1
+cd kafka_2.12-2.8.1
+
+bin/kafka-topics.sh --create --topic demo_testing2 --bootstrap-server <copy and paste from MSK-view client info-plaintext> --replication-factor 1 --partitions 1
+
+step-10
+--------------- (no need to manage zookeeper)
+bin/kafka-console-producer.sh --topic demo_testing2 --bootstrap-server <xxx>
+
+open a new console window--
+cd kafka_2.12-2.8.1
+bin/kafka-console-consumer.sh --topic demo_testing2 --bootstrap-server <xxx>
+
+step-11
+--------------- (use confluent rest we can connect with our kafka cluster and use rest API we can publish messages in the kafka)
+wget http://packages.confluent.io.archive/5.1/confluent-5.1.2-2.11.zip
+unzip confluent-5.1.2-2.11.zip
+
+export CONFLUENT_HOME=/home/ec2-user/kafka_2.12-2.8.1/confluent-5.1.2
+export PATH=$PATH:$CONFLUENT_HOME/bin
+
+vi confluent-5.1.2/etc/kafka-rest/kafka-rest.properties (#this is file in kafka in ec2 we need to modify, can use winSCP to get into ec2)
+bootstrap.servers=PLAINTEXT://......amazonaws.com:9002, PLAINTEXT://......amazonaws.com:9002 (#two brokers) (#original:bootstrap.servers=PLAINTEXT://9092)
+
+step-12
+--------------- (run kafka-rest and use postman to test, you can open a consumer window in ec2 to monitor)
+allow the rest proxy accesible via internet, need to make sure for this ec2 all traffic from external world is allowed
+so in security grou: all traffic from 0.0.0.0/0
+
+/home/ec2-user/kafka_2.12-2.8.1/confluent-5.1.2/bin/kafka-rest-start
+/home/ec2-user/kafka_2.12-2.8.1/confluent-5.1.2/etc/kafka-rest/kafka-rest.properties
+
+allow all traffic to the security group of ec2
+
+go to postman
+http://<public ip of ec2>:8082/topics/demo_testing2
+post method
+Content-Type: application/vnd.kafka.json.v2+json
+{"records":[{"value":{"name":"testUser"}}]}
+
+
+
