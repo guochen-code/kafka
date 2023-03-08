@@ -1,0 +1,37 @@
+wget https://dlcdn.apache.org/kafka/3.2.0/kafka_2.12-3.2.0.tgz
+tar -xvf kafka_2.12-3.2.0.tgz
+java -version
+sudo yum install java-1.8.0-openjdk # download java
+java -version
+cd kafka_2.12-3.2.0
+ls
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+open ec2 in a new console --
+export KAFKA_HEAP_OPTS="-Xmx256M -Xms128M" # for ec2 micro because kafka server requires good amount of space # limit kafka heap volume, set min and max
+cd kafka_2.12-3.2.0
+bin/kafka-server-start.sh config/server.properties # use command to run the properties file # start kafka server
+
+# once started server, you notice the ip is the private ip of ec2
+# if user outside the network, it cannot detect the ip
+# make sure the broker is set with public ip in the port 9092
+# need to change server.properties
+(1) use WinSCP: open server.properties - advertised.listeners=PLAINTEXT://your.host.name:9092 - change to advertised.listeners=PLAINTEXT://<public ip of ec2>:9092
+(2) use command in ec2: vi config/server.properties --change adverse listener, change that to public ip
+# restart kafka server
+
+in a new console--
+cd kafka_2.12-3.2.0
+bin/kafka-topics.sh --create --topic demo_testing2 --bootstrap-server <public ip>:9092 
+--replication-factor 1 --partitions 1
+
+start producer:
+bin/kafka-console-producer.sh --topic demo_testing2 --bootstrap-server <public ip>:9092
+
+in a new console--
+start consumer:
+cd kafka_2.12-3.2.0
+bin/kafka-console-consumer.sh --topic demo_testing2 --bootstrap-server <public ip>:9092
+
+
+
