@@ -1,0 +1,72 @@
+* whenever a topic is created with multiple paritions in cluster of brokers, partitions are distributed across different brokers, instead of in one broker!!!!!!!!!!!!!
+one topic and multiple partitions
+not all paritions will be created in one single broker - fault-tolerant
+if all partitions only in one broker, if broken, the topic will be not accessible
+if distributed in multiple brokers, if one broker is down, only the paritions in that broker will not be accessible. other paritions are ok
+
+************************************************************************************************************************* start multiple brokers
+start zookeeper
+start kafka-server
+# show a list of broker ids !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+F:/kafka_2.12-3.2.0/bin/windows/zookeeper-shell.sh(or .bat) localhost:2181 ls /brokers/ids
+error: socket closedmodification: open zookeeper.properties file - locate maxClientCnxns=1 - change it to 0, means unlimited connections possible
+restart zookeeper
+restart kafka server
+# you will see printout [0], means broker id is 0, why
+# open server.properties - locate broker.id=0 - that's why it shows 0
+
+clear all the existing logs
+create multiple brokers
+____________________________________
+go to kafka logs folder
+change server_logs name to server_logs_1
+copy and paste and change name to server_logs_2
+opy and paste and change name to server_logs_3
+
+# need multiple scripts
+rename server.properties to server1.properties
+copy and paste this script and change names to server2.properties and server3.properties
+***** make sure all servers get different broker.id =0,1,2
+***** make sure change log directory: log.dirs=F:/kafka_logs/server_logs_1 (server_logs_2, server_logs_3)
+***** make sure change listeners=PLAINTEXT://:9092 (9093, 9094) # not use same port for different brokers!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+no need to change zookeeper, for now on local, only use one zookeeper to manage and coordinate between brokers
+____________________________________
+start kafka servers
+____________________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-server-start.bat
+F:/kafka_2.12-3.2.0/config/server1.properties 
+
+F:/kafka_2.12-3.2.0/bin/windows/kafka-server-start.bat
+F:/kafka_2.12-3.2.0/config/server2.properties 
+
+F:/kafka_2.12-3.2.0/bin/windows/kafka-server-start.bat
+F:/kafka_2.12-3.2.0/config/server3.properties 
+____________________________________
+create a topic (multiple server kafka topic)
+____________________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-topics.bat --create --topic demo_testing2
+--bootstrap-server localhost:9092,localhost:9093,localhost:9094 --replication-factor 1 --partition 5
+# go to kafka_logs folder - check each server folder, will find different partitions created across different servers
+____________________________________
+start kafka producer:
+____________________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-producer.bat --topic demo_testing2
+--bootstrap-server localhost:9092,localhost:9093,localhost:9094
+____________________________________
+start kafka consumer:
+____________________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic demo_testing2
+--from beginning --bootstrap-server localhost:9092,localhost:9093,localhost:9094
+
+# shows up in one consumer
+message 1 - partition 4, server 1
+message 2 - partition 3, server 2
+message 3 - partition 2, server 3
+...........
+shut down server 3
+start a new consumer: will not receive message 3 
+# start server 3 again
+
+**** data present in that particular server already is dead, cannot be consumed by any consumer.
+**** need to replicate data from one server to another
+
