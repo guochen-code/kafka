@@ -1,0 +1,26 @@
+the rack awareness feature in kafka spreads replicas of the same partition across different racks
+to minimize data loss in the event of a rack failure
+(one rack can host two brokers)
+
+************************************************************************************************************************
+start zookeeper
+create 3 servers - copy, paste and change name of the property script - other changes: log directory, id, listen port etc....
+start all 3 servers
+list all the brokers
+create a topic
+describe the topic
+
+******************* configure which broker running on which rack
+we should not see in the same rack, the replica partition is available, it should be in different rack
+
+______________________________________________________
+set broker 0 and 1 in rack 1, set broker 2 in rack 2
+______________________________________________________
+open server0.properties - after broker.id =0 add a new line: broker.rack=1
+open server1.properties - after broker.id =1 add a new line: broker.rack=1
+open server2.properties - after broker.id =2 add a new line: broker.rack=2
+# start all brokers again
+# create multiple topics
+# notice Replicas is always 1,2 or 2,1, or 0,2......, will never see a combination of Relicas: 0,1
+
+*** understand why it is fail safe ******
