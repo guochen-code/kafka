@@ -1,0 +1,17 @@
+the acks parameter controls how many partition replicas must receive the record before the producer can consider the write successful.
+this option has a significant impact on how likely messages are to be lost.
+
+acks=0
+producer will not wait for a reply from the broker before assuming the message was sent successfully
+this means if broker goes offline or an exception happens and the broker did not receive the message, the producer will not know about it and the message will be lost
+
+acks=1
+the producer wil receive a sucecss response from the broker the moment the leader received the message.
+if the message cannot be written to the leader(e.g.,if the leader crashed and a new leader was not elected yet), the producer wil receive an error response 
+and can retry sending the message, avoiding potential loss of data.
+
+acks=all
+the producer will receive a success reponse from the broker only when all the in-sync replicas receive the message
+-leader + replicas ack requested
+-added latency and safety
+
