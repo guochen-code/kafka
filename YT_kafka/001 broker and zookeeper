@@ -1,0 +1,10 @@
+broker is the key to connect between producer and consumer, so
+need multiple brokers/ cluster of brokers to avoid single point of failture if only using one broker
+how to manage multiple brokers, how to coordinate between multiple brokers if leading broker is not working
+zookeeper
+
+same idea
+if single zookeeper, what if the zookeeper fails.
+so, multiple zookeepers
+make the whole system more fault-tolerant
+
