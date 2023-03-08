@@ -1,0 +1,32 @@
+in kafka, replication happens at the partition granularity !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+copies of the partition are maintained at multiple brokers
+
+number of actual partitions = number of desired paritions * replication factor !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+leader parition vs in sync replica partition
+leader partition responsible for sending and receiving data
+____________________________________________________________
+how to identify which is leader and which is in sync replica
+_____________________________________________
+F:/Kafka_2.12-3.2.0/bin/windows/kafka-topics.bat --bootstrap-server
+localhost:9092,localhost:9093,localhost:9094 --describe --topic demo_testing2
+--->
+Topic: demo_testing2 Partition:0 Leader:1 Replicas: 1,0,2 Isr: 1,0,2
+# for partition 0, its leader is in server 1, Isr means in sync replica
+
+# shut down one server
+# get warming mesage, one broker is not available
+# that's fine, because we get all the messages
+consumer and producer are not getting affected, that's the beauty of replication
+
+rerun:
+F:/Kafka_2.12-3.2.0/bin/windows/kafka-topics.bat --bootstrap-server
+localhost:9092,localhost:9093,localhost:9094 --describe --topic demo_testing2
+---> will notice leader changes
+---> will see Isr changes, because one broker is down, not in sync any more
+
+#shutdown one more server
+start a new consumer
+still get all the messages
+
+
