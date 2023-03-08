@@ -1,0 +1,28 @@
+producer record ----------> serializer (binary data)---------> partitioner ----------------------> buffer --------------------------------------> 
+- topic                     convert to binary stream           hash(record.key)%num_partitions       not directly written into cluster
+- [partition]               send over network                  determine partition for each record   but in partition's buffer
+- [key]                                                                                              partition has its own internal buffer
+- value
+
+why buffer:
+accumulate messages and act like fire hose to push in batch
+for efficiency in I/O operation and compression
+
+------> batch 1, batch 2, batch 3  -----------> kakfa cluster ------> fail ------> rety/-----> success
+      multiple messages clubbed into batches
+      batch size can be configured
+
+*** linger.ms: instructs producer to wait up to certain miliseconds, for example 5 miliseconds, before sending the content, from buffer to kafka cluster
+*** batch.size: for example, 5mb, either wait for 5 miliseconds or size reachs 5mb whichever happens first
+- from the buffer kafka start creating different batches and each batch to kafka cluster, not in a single message but it accumulates some messages and send together
+
+what if fails due to network
+retry: 5 times?
+if success, kafka record metadata partition offset timestamp
+if not, exception
+
+***** all are producer internals
+common issue:
+producer producing at very high rate, buffer volume is 32mb, before accumulation itself, the 32mb is exceeded, message will not get written to kafka cluster
+you may need to increase buffer volume
+
