@@ -1,0 +1,74 @@
+topic: stream of data
+like table in the database
+
+many topics ~ many tabels - identified by the name
+
+inside topic, multiple partitions
+configure topic
+message will be randomly sent to different partitions unless you specify the key
+
+once message is getting stored in partition, it is also tagged with one incremental id, which is offset, always start 0 in a particular partition
+offset can grow up infinitely, it is unbounded
+so, offset is only meaningful unless given a topic name and partition number !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+after message life span, message will be purged
+but offset will never decrease
+example
+now: we have offset 0-10
+7 days later: we have 11-17 because 0-10 will be goine
+offset will be continuously increasing !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! in particular topic and in particular partition
+
+once data is written, it is immutable
+cannot swap offset, cannot swap messages between offset 3 and offset 4
+
+****************************************************************************************************************************** topic with multiple partitions:
+_____________________
+start zookeeper:
+_____________________
+F:/kafka_2.12-3.2.0/bin/window/zookeep-server-start.bat
+F:/kafka_2.12-3.2.0/config/zookeeper.properties
+_____________________
+start kafka server:
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-server-start.bat
+F:/kafka_2.12-3.2.0/config/server.properies
+_____________________
+create a topic:
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-topics.bat --create --topic demo_testing
+--bootstrap-serever localhost:9092 --replication-factor 1 --partition 3
+# check the log directory: should be 3 folders created for 3 partitions respectively
+_____________________
+start producer:
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-producer.bat --topic demo_testing
+--bootstrap-server localhost:9092
+# send messages and check log directory: messages should be randomly sent to different partitions
+# partition 0 received message 1 and 3; partition 1 received message 2; partition 2 did not receive anything
+_____________________
+create consumer:
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic demo_testing
+--from-beginning --bootstrap-server localhost:9092
+# observation: message received NOT in order: message 1 - message 3 - message 2
+# if multiple partitions in topic then the consumption of messages will not be happening in the same order !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+_____________________
+read meesage from specific partition:
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic demo_testing
+--from-beginning --bootstrap-server localhost:9092 --partition 2 # only read from partition 2
+_____________________
+reading message from specific offset inside a specific partition:
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic demo_testing
+--bootstrap-server localhost:9092 --partition 0 --offset 0 # only read from partition 0, this equals from beginning
+
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic demo_testing
+--bootstrap-server localhost:9092 --partition 0 --offset 1 
+_____________________
+reading message from specific offset (note here: no partition specified!!!)
+_____________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic demo_testing
+--bootstrap-server localhost:9092 --offset 0 
+---> errror!!!!!!!!!!!!!! partition is required when offset is specified !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
