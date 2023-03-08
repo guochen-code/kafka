@@ -1,4 +1,4 @@
-wget https://dlcdn.apache.org/kafka/3.2.0/kafka_2.12-3.2.0.tgz
+wget https://dlcdn.apache.org/kafka/3.2.0/kafka_2.12-3.2.0.tgz (wget https://archive.apache.org/dist/kafka/3.2.0/kafka_2.12-3.2.0.tgz)
 tar -xvf kafka_2.12-3.2.0.tgz
 java -version
 sudo yum install java-1.8.0-openjdk # download java
