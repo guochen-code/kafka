@@ -1,0 +1,39 @@
+how does a producer know how to send the data to a topic partition?
+for this, we use meesage keys
+so alongside the message value, we can choose to send a message key and that key can be whatever you want it could be a string, it could be a number
+whatever you want tand it turns out that if you do not send the key, the key is set to null then the data will be sent in a round robin fasion to make it very simple.
+(round robin:0-1-2-0-1-2-0-1-2...., round)
+
+hashing algorithm is a mapping function: always map key1 to partition1 and key2 to partition2, guranteed
+
+in case you send a key with a message, all the messages that share the same key wll always go to the same partition !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+to enable sending key-value pairs, from the command-line, we need to use two properties below:
+-- parse.key: default is false, if true then message is mandatory
+-- key.separator # key:value, then separator is :
+
+**************************************************************************************************************************************************************
+start zookeeper
+start server
+create topic
+start producer
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-producer.bat --topic hello_world2
+--bootstrap-server localhost:9092
+vs
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-producer.bat --bootstrap-server localhost:9092
+--property "parse.key true" --property "key.separator=:" --topic hello_world2
+start consumer
+
+***producer samples: 
+1001:"Mobile,100"
+1002:"Mouse,50"
+1001:"Computer,1500"
+1002:"Pen,2"
+.....
+# notice that in the log directory... how data is stored in partitions
+# messages with the same key are all in the same parition log segment !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# 1001 can be in partition 1, 1002 and 1003 can be both in partition 2
+# because hashing algorithm generates same output for key 1002 and 1003
+
+**************************************************************************************************************************************************************
+
