@@ -1,0 +1,10 @@
+whatever producers are publishing in a topic in a kafka cluster
+these messages are stored in a particular log file in a particular partition in a kafka server in append manner
+
+instead of creating one single large log file in a particular partition, kafka creates several small files where all the messages are stored
+each of these small files in a particular partition is called segment
+
+
+**********************************************************************
+open server.properties - locate log.segment.bytes=1073741824
+
