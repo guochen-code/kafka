@@ -1,0 +1,31 @@
+configuration in the kafka producer internals for better cluster and production system
+
+when a send method is called from a producer
+(1) serialization and paritioning happens
+(2) immediately the message never goes to kafka cluster, but rather it basically going to in memory queue kind of data structure which is acting like buffer
+     or call this one as record accumulator
+
+some import properties related to kafka producer
+
+purpose of buffer: for efficiency in I/O operations and compressions
+
+from buffer to kafka cluster, what operation takes the messages, basically there is an I/O thread
+
+(1) buffer.memory
+(2) batchsize
+(3) lingerms
+(4) max.block.ms
+
+producing at very high speed. if buffer is full, send method is blocked for a particular span of time. use max.block.ms to configure the span of time.
+for example 5 miliseconds. hope within the 5 miliseconds the buffer can send some messages to kafka cluster using I/O thread
+and that way in buffer memory there is some empty space will be created and new messages can come in
+
+***** summary:
+sending messages too fast using producer API
+- when the producer calls send(), the messages will not be immediately sent but added to an internal buffer
+- the default buffer.memory is 32MB
+- if the producer sends messages faster than they can be transmitted to the broker or there is a network issuem it will exceeds buffer.memory then the send() 
+call will be blocked up to max.block.ms
+
+
+
