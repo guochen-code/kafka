@@ -3,3 +3,18 @@ consumer need to request for the message, pull the message
 number of consumers <= number of partitions
 if not, the extra consumers will be sitting idle
 
+********************************************************************************************************************************************************************
+start consumer with group
+_______________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-console-consumer.bat --topic hello_world1 --from-beginning
+--bootstrap-server localhost:9092 --group my-first-consumer-group
+
+# run twice, two consumers in the same consumer group
+# rebalancing will start, after rebalancing completed, consumer 1 will consume some partitions while consumer 2 will consume other partitions
+# keep adding consumer in the same consumer group, if number of consumers = number of partitions, one partition to one consumer
+# if add one more consumer, rebalancing starts again, the existing mapping relationship between partition and consumer may be changed !!!!!!!!!!!!!!!!!!!
+example:
+eariler:
+partition 1 -> consumer 1, partition 2 -> consumer 2, partition 3 -> consumer 3
+now:
+partition 1 -> consumer 1, partition 2 -> consumer 4, partition 3 -> consumer 2 ------ consumer 3 is sitting idel now 
