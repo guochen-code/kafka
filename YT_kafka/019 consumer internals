@@ -1,0 +1,36 @@
+initiate consumer
+- key_deserializer
+- value_deserializer
+- auto_offset_reset=latest
+
+poll ---> broker
+fetch records request - broker will check if initial fetch or not for this consumer session - 
+yes first time: broker perform consumer rebalance, read events for assigned partition(s) - individual consumer assgined different paritions and from that partitions the broker will send the message
+if not first time request for that particular consumer session: broker will read events for assigned partition(s) and send batch of messages to the consumer
+
+in the backend, timer automatically starts after polling is done !!!!!!!!!!!!!!!!!!!
+the commit of offset happens automatically in the backend
+dependent on two properties
+- enable_auto_commit=True (default property for python consumer api
+- auto_commit_interval_ms=5000
+
+**** the polling mechanism drives the commit of offset in the kafka *****************
+
+in parallel,
+it will wait - check time expird & no error - if no, keep waiting / if yes, commit offset and communicate with broker to save offset (__consumer_topic in kafka)
+
+in parallel,
+the main stream: start autocommit timer - collect records - process record - check if have more records or not - if yes, go back to collect records
+if no, it will again call the polling method
+(this is why it is a infinite loop, because polling method is called infinitely, even though in our code it is "for message in consumer")
+
+what if during processing the message, it fails:
+process record - error in processing the data - poll
+example:
+10 messages in total
+collected and processed 3 messages (already in database) within 5 seconds, means not commit offset
+when processing message 4, error occurs, all program will be interrupted, no more commit offset
+start polling again, message 1-3 get collected and processed again........
+
+********** this architecture promise at least once processing ***********************
+
