@@ -1,0 +1,29 @@
+one of kafka's unique characteristics is that it does not track acknowledgements from consumers
+
+consumer API you use (java or python) take the responsibility to commit the information in the consumer offset topic that up to the offset for it has consumed
+all the information stored in : _consumer_offset
+when a consumer is down, after rebalancing a new consumer start with the same partition (same consumer group),
+it first goes to _consumer_offset this particular topic and will know 
+where to start, prevents reprocessing of the same message
+
+how to determine initial offset? (there is no offset, we just start first consumer in a new group)
+- the decision on whether to consume from the beginning of a topic partition or to only consume new messages when there is no initial offset for the consumer group is
+controlled by the auto.offse.reset configuration parameter on the kakfa consumer
+- earliest: reset offset to the earliest offset. consume from the beginning of the topic partition
+- latest(default): reset offset to the latest offset. consume from the end of the topic partition
+
+***************************
+once a consumer group has an offset written then this configuration parameter no logner applies.
+if the consumers in the consumer group are stopped and then restarted, they would pick up consuming from the last offset.
+***************************
+
+from kafka import KafkaCOnsumer
+import json
+
+consumer=KakfaConsumer('heelo_word1',bootstrap_servers=['localhost:9092'],
+value_deserializer=lambda m:json.loads(m.decode9'utf-8')),group_id='demo1',auto_offset_reset='latest')
+
+for message in consumer:
+  print(message)
+  
+  
