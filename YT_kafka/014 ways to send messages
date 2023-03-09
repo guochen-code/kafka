@@ -1,0 +1,72 @@
+(1) fire and forget
+- we send a message to the server and don't really care if it arrives successfully or not
+- most of the time, it will arrive successfully, since kafka is highly available and the producer will retry sending messages automatically
+- however, some messages will get lost using this method
+
+# if the broker is down, producer will not be aware of that, but keep sending messages, but consumer will not receive these messages because broker is down
+
+(2) synchronous send
+- we send message, the send() method returns a future object, and we use get() to wait on the future and see if the send() was successful or not
+*************************************************************************************************
+for e in range(100):
+   data = {'number' : e}
+   print(data)
+   try:
+       record_metadata =producer.send(topic_name, value=data).get(timeout=10)
+       print(record_metadata.topic)
+       print(record_metadata.partition)
+       print(record_metadata.offset)
+       sleep(0.5)
+   except Exception as e:
+       print(e)
+
+producer.flush()
+producer.close()
+*************************************************************************************************
+shutdown the broker, after that
+{'numer':64}
+KafkaTimeoutError: Timeout after waiting for 10 secs.
+
+(3) Asynchronous send - middle approach
+(1) lose some message and (2) time consuming because timeout=10, will always wait 10 then proceed with next message, slow operation
+- suppose the network roundtrip time between our application and the kafka cluster is 10ms
+- if we wait for a reply after sending message, sending 100 messages will take around 1 second
+- on the other hand, if we just send all our messages and not wait for any replies, then sending 100 messages will barely take any time at all
+- in most cases, we really don't need a reply - kafka sends back the topic,partition and offset of the record after it was written, which is usually not required
+  by the sending app
+- on the other hand, we do need to know when we failed to send a message completely so we can throw an exception, log an error, or perhaps write the message to
+  an "errors" file for later analysis
+
+in order to send messages asynchronously and still handle error scenarios, the producer supports adding a callback when sending a record
+*************************************************************************************************
+# from json import dumps
+# from kafka import KafkaProducer
+#
+# topic_name='hello_world1'
+# producer = KafkaProducer(bootstrap_servers=['localhost:9092'],value_serializer=lambda x: dumps(x).encode('utf-8'))
+#
+#
+# def on_send_success(record_metadata,message):
+#     print()
+#     print("""Successfully produced "{}" to topic {} and partition {} at offset {}""".format(message,record_metadata.topic,record_metadata.partition,record_metadata.offset))
+#     print()
+#
+#
+# def on_send_error(excp,message):
+#     print()
+#     print('Failed to write the message "{}" , error : {}'.format(message,excp))
+#     print()
+#
+# for e in range(1000):
+#     data = {'number' : e}
+#     record_metadata =producer.send(topic_name, value=data).add_callback(on_send_success,message=data).add_errback(on_send_error,message=data)
+#     print("Sent the message {} using send method".format(data))
+#     print()
+#     sleep(0.5)
+# producer.flush()
+# producer.close()
+*************************************************************************************************
+
+
+
+
