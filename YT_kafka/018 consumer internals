@@ -5,7 +5,8 @@ initiate consumer
 
 poll ---> broker
 fetch records request - broker will check if initial fetch or not for this consumer session - 
-yes first time: broker perform consumer rebalance, read events for assigned partition(s) - individual consumer assgined different paritions and from that partitions the broker will send the message
+yes first time: broker perform consumer rebalance, read events for assigned partition(s) 
+- individual consumer assgined different paritions and from that partitions the broker will send the message - based on offset commit !!!!!!!!!!!!!!!!!!!!!!!
 if not first time request for that particular consumer session: broker will read events for assigned partition(s) and send batch of messages to the consumer
 
 in the backend, timer automatically starts after polling is done !!!!!!!!!!!!!!!!!!!
