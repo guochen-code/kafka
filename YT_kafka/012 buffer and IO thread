@@ -13,7 +13,7 @@ from buffer to kafka cluster, what operation takes the messages, basically there
 
 (1) buffer.memory
 (2) batchsize
-(3) lingerms
+(3) lingerms (default=0, means message will be sent right away, which is not true due to I/O thread. it only true if I/O thread is free!!!!!!!!!!!!!!!!)
 (4) max.block.ms
 
 producing at very high speed. if buffer is full, send method is blocked for a particular span of time. use max.block.ms to configure the span of time.
@@ -27,5 +27,16 @@ sending messages too fast using producer API
 - if the producer sends messages faster than they can be transmitted to the broker or there is a network issuem it will exceeds buffer.memory then the send() 
 call will be blocked up to max.block.ms
 
+if you write at very high speed, even if your lingerms=0, not expect immediately available to pass the message to kafka cluster
+if the speed is not matching the I/O thread, suppose I/O thread is taking some time to write the message, obviously here in the buffer message will be keeping accumulated
 
+experiment, send at a high speed
 
+for i in range(0,1000):
+     send(i)
+# program very soon sent out all the messages and exit
+# but in kafka consumer, only have seen 0-997, miss 998 and 999
+# why: 998 and 999 not written to the kafka cluster, still in buffer, but program exit so I/O thread did not have a chance to pass them to cluster
+# what to do:
+producer.flush() # flush all the remaining messages in the memory buffer if any
+producer.close() # close connection
