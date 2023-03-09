@@ -1,0 +1,5 @@
+consumer need to request for the message, pull the message
+
+number of consumers <= number of partitions
+if not, the extra consumers will be sitting idle
+
