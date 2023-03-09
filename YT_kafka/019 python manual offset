@@ -1,0 +1,23 @@
+****************************************************** exactly once processing example - manual commit after processing
+from kafka import KafkaConsumer
+from kafka import TopicPartition, OffsetAndMetadata
+import json
+
+consumer=KakfaConsumer('heelo_word1',bootstrap_servers=['localhost:9092'],
+value_deserializer=lambda m:json.loads(m.decode9'utf-8')),group_id='demo1',auto_offset_reset='earliest', enable_auto_commit=False)
+
+for message in consumer:
+  print(message)
+  print("The value is : {}".format(message.value))
+  print("The key is : {}".format(message.key))
+  print("The topic is : {}".format(message.topic))
+  print("The partition is : {}".format(message.partition))
+  print("The offset is : {}".format(message.offset))
+  print("The timestamp is : {}".format(message.timestamp))
+  tp=TopicPartition(message.topic,message.partition) # TopicPartition takes in two parameters: topic and partition
+  om=OffsetAndMetadata(message.offset+1,message.timestamp) # OffsetAndMetadata takes in two parameters: offset and metadata (can be anything, here use timestamp)
+  consumer.commit({tp:om})
+  print('*',100)
+  
+# message.offset+1 = current offset received + 1, wanted offset = current offset received + 1
+
