@@ -1,0 +1,75 @@
+setup:
+start zookeeper
+start server
+create 4 topics / each topic with 3 partitions
+
+******************************
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+
+############################################################################################################################# write message to a specified partition
+topic_name='hello_world1"
+producer=KafkaProducer(bootstrap_servers=['localhost:9092'],
+                       value_serializer=lambdax:dumps(x).encode('utf-8')
+                       )
+data1={'number':1}
+data2={'number':2}
+.........
+producer.send(topic_name,value=data1,partition=1) # explicitly mention partition name
+producer.send(topic_name,value=data2,partition=1) # explicitly mention partition name
+
+
+data1={'number':1}
+data2={'number':2}
+.........
+producer.send(topic_name,value=data1,partition=2) # explicitly mention partition name
+producer.send(topic_name,value=data2,partition=2) # explicitly mention partition name
+
+producer.close()
+
+############################################################################################################################# pass key value pair in binary
+from json import dumps
+from kafka import kafkaProducer
+producer=KafkaProducer(bootstrap_servers=['localhost:9092']) # here we send binary stream, no need to specify key and value serializer, handle binary by default
+topic_name='hello_world2'
+producer.send(topic_name,key=b'foo',value=b'bar') 
+producer.send(topic_name,key=b'foo',value=b'bar') # same key, so same partition
+producer.close()
+
+############################################################################################################################# pass key value pair in non-binary
+topic_name='hello_world3"
+producer=KafkaProducer(bootstrap_servers=['localhost:9092'],
+                       key_serializer=str.encode,
+                       value_serializer=lambdax:dumps(x).encode('utf-8')
+                       )
+data1={'number':1}
+data2={'number':2}
+producer.send(topic_name,key='ping', value=data1) 
+producer.send(topic_name,key='pong', value=data2) 
+producer.close()
+
+############################################################################################################################# customize a partitioner
+def custom_partitioner(key, all_partitions, available): #
+  ''' 
+  customer kafka partitoner to get the partition corresponding to key
+  :params key: partitioning key
+  :params all_partitions: lsit of all partitions sorted by partition ID
+  :params available: list of available partitions in no particular order
+  :return: one of the values from all_partitions or available
+  '''
+  print("The key is : {}".format(key)) # important key comes in as binary because partitioner is after serializer in the producer internals workflow 
+  print("All paritions : {}".format(all_partitions))
+  print("After decoding of the key: {}".format(key.decode('UTF-8')))
+  return int(key.decode('UTF-8'))%len(all_partitions) # convert key from binary to string # remainder
+  
+producer=KafkaProducer(bootstrap_servers=['localhost:9092'],
+                      partitioner=custom_partitioner) ############# partitioner is a callable in the built-in
+                      
+topic_name='hello_world4'
+producer.send(topic_name,key=b'3', value=b'Hello Partitioner') 
+producer.send(topic_name,key=b'2', value=b'Hello Partitioner') 
+producer.send(topic_name,key=b'369', value=b'Hello Partitioner') 
+producer.send(topic_name,key=b'301', value=b'Hello Partitioner') 
+
+producer.close()
