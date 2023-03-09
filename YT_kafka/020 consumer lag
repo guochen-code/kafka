@@ -1,0 +1,11 @@
+consumer lag: the difference between how fast producers palce records on the broker and when consumers read those messages is called 
+
+***************
+def custome_function():
+  return int(key.decode('UTF-8')%len(all_partitions) # odd number goes to partition 0, even number goes to partition 1
+  
+for e in range(1000):
+  data = {'numer':e}
+  print(data)
+  producer.send(topic_name,key=str(e).encode(),value=data) # odd number goes to partition 0, even number goes to partition 1
+  sleep(0.4)
