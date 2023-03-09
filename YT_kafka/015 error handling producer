@@ -5,3 +5,10 @@ either change replication-factor = 2 or ack = 1
 alternatively, we can set:
 min.insync.Replicas = 2
 this will overwrite/change the meaning of ack = all
+
+(1) 
+if original topics is down (broker)
+create another topic, write failed messages to this topic and consumer retrieve these messages and send to a producer, producer send to original topics once fixed
+
+(2) if entire cluster is down
+write messages to a database, scheduler code to retrieve these messages from db and use producer to send to original cluster once fixed
