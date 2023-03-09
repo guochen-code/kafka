@@ -35,3 +35,21 @@ start polling again, message 1-3 get collected and processed again........
 
 ********** this architecture promise at least once processing ***********************
 
+****************************************************************************************************************************** manual offset commits 
+*** at least once
+in the box of collect records: we collected 10 messages....
+commit offset afterall 10 messages processed
+
+*** exactly once processing:
+move commit offset upstream in the workflow - after process
+commit offset after each message is processed
+
+*** at most once processing:
+move commit offset upstream further - after collect records
+
+
+summary:
+commit before process - at most once - because already committed, even error in processing, next poll will be next message
+commit after process - (1) process individual message - exactly once
+                        (2) process batch messages - at least once 
+
