@@ -1,0 +1,44 @@
+what if batches failed to be passed to the kafka cluster
+
+I/O thread writting messages to kafka cluster - important properties:
+(1) acks
+(2) max_in_flight_requests_per_connection 
+(3) enable.idempotence
+
+before writting
+check if duplicate or not?
+if no, persist to leader and replicas
+if success, success handler (client know this message is written successfully), process finishes
+if not success, retry
+
+if retry not enabled, I/O thread is not able to write message, will go to error handler (client get known that this message not written successfully), process finishes
+(client can start handle that, maybe send the same set of messages from beginning, because message in batch)
+if retry enabled, there is a parameter which is delivery.timeout.ms, which means how much time the kafka will try to write the message or retry to write the message
+if it fails first time
+if  delivery.timeout.ms is over, will go to error handler, process finishes
+
+(3) enable.idempotence
+what if batch is written successfully but the ackonwlegement never goes back to producer, so producer will think the batch is not written
+this will cause duplicate
+if you enable.idempotence, before writting, will check duplicate or not
+if duplicate, kafka cluster will understand it is already written but due to some reason the acknowledgement failed to deliver, so producer is resending, so
+the kafka cluster will not rewrite, but send the acknowledgement again for that particular batch
+
+(2) max_in_flight_requests_per_connection 
+if we have 3 batches, coincidentally all the batches are going to one single partition only for a particular topic
+1st batch, I/O thread successfully write
+I/O thread tries to write 2nd batch, but fail due to some reason
+we have retry, so kafka cluster will retry to write the 2nd batch in our parition again
+but when cluster is having a retry, it will take some time. meanwhile I/O thread successfully write 3rd batch in the same partition
+but order should be 1st-2nd-3rd batch
+due to this retry....ordering is changed, retry behaviour is screwing our actual message ordering within a particular partition
+max_in_flight_requests_per_connection 
+in flight requests mean requests are sent but not yet completed
+max_in_flight_requests_per_connection=1, means send the requests and wait for the response
+suppose send a batch, first time it is not able to be written in cluster, will have retry, while having retry, kafka will not write any other batch in the cluster
+it will slow down message writting operation
+make your kafka message writing operation a synchrounous process
+
+
+
+
