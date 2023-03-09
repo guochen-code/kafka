@@ -1,0 +1,7 @@
+replication-factor = 3
+ack = all
+if one broker is down, the conditions will not be satisfied any more
+either change replication-factor = 2 or ack = 1
+alternatively, we can set:
+min.insync.Replicas = 2
+this will overwrite/change the meaning of ack = all
