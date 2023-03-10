@@ -1,11 +1,15 @@
 consumer lag: the difference between how fast producers palce records on the broker and when consumers read those messages is called 
 
-***************
-def custome_function():
+*************** have 2 partitions
+def custom_partitioner(key, all_partitions, available):
   return int(key.decode('UTF-8')%len(all_partitions) # odd number goes to partition 0, even number goes to partition 1
   
 for e in range(1000):
   data = {'numer':e}
   print(data)
-  producer.send(topic_name,key=str(e).encode(),value=data) # odd number goes to partition 0, even number goes to partition 1
+  producer.send(topic_name,key=str(e).encode(),value=data) # even number goes to partition 0, odd number goes to partition 1
   sleep(0.4)
+
+# how to describe consumer lag
+F:/kafka_2.12-3.3.1/bin/windows/kafka-consumer-groups.bat --bootstrap-server localhost:9092
+--group demo123 --describe
