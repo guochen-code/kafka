@@ -1,0 +1,27 @@
+consumer is requesting messages based on the offset
+
+if log file is huge, if consumer is requesting to provide messages from a particular offset, the broker to scan a huge volume of data within the log file
+in database, instead of scanning the whole table, we have index
+that's why these .index files exist, to help brokers quickly find the messages for a given offset, kafka maintains index of offsets
+
+************************** lab
+delete all the logs
+start zookeeper
+start kafka server
+execute a python producer
+_______________________________
+inspecting the index file:
+_______________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-run-class.bat kafka.tools.DumplogSegments --files
+F:/kafka_logs/server_logs/my-topic-0/00000000000000000000.index --deep-iteration --print-data-log
+---->
+offset:831 positoin:17165 # means offset 831 is available in the position 17165 in our log (bytes position)
+offset:925 positoin:21652
+offset:1067 positoin:25802
+# if want offset=1000, do a binary search, will look into position between 21652 and 25802
+# offset listed in an increasing order
+
+# broker can use this to easily locate the offset
+_______________________________
+when index file data written?
+_______________________________
