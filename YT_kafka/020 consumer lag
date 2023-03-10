@@ -10,6 +10,15 @@ for e in range(1000):
   producer.send(topic_name,key=str(e).encode(),value=data) # even number goes to partition 0, odd number goes to partition 1
   sleep(0.4)
 
+______________________________________
 # how to describe consumer lag
+______________________________________
 F:/kafka_2.12-3.3.1/bin/windows/kafka-consumer-groups.bat --bootstrap-server localhost:9092
 --group demo123 --describe
+--->
+current-offset 11
+log-end-offset 29
+lag 18
+
+there is bound to be some lag from the consumer, but ideally the consumer will catch up, or at least have a consistent lag
+rather than a gradually increasing lag
