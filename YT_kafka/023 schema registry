@@ -38,4 +38,4 @@ reduce an existing field
 --- 
 
 with time, our schemas will evolve, we add new changes and if changes are compatible, we get a new schema ID and our version number increments
-
+schema is an object, object will not be changed, if compatible
