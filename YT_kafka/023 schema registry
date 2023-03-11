@@ -1,0 +1,41 @@
+kafka, at its core, only transfers data in byte format
+there is no data verification that's being done at the kafka cluster level
+in fact, kafka does not know what kind of data it is sending or receiving. whether it is a string or an integer
+
+value_serializer = lambda x : dumps(x).encode('utf-8') # convert json to string and then convert string to byte
+value_deserializer = lambda m : json.loads(m.decode('utf-8')) # decode byte to string and convert back to json
+
+data verification and validation is missing in this architecture
+
+expected : {'age':38, 'name':'Ramu'}
+unexpected bad data: {'age':'hello','name':38}
+
+we need a way to have a common data type that must be agreed upon. if not matching, the producer will not even publish that particular message
+
+schema registry is a stand alone cluster, not in kafka cluster
+
+producer + schema (a file we define) + Avro serializer (ensure source data's schema is compatible, not process if not compatible)
+---> register schema for the very first time ---> schema registry ---> give back SchemaID (different schemeID represents different schemas)
+---> Avro serializer will combine (schemaID + serialized data), the whole one will be sent to kafka
+
+consumer side:
+get (id+serialized data) ---> Avro DeSerializer ---> have the id, go to schema registry and get the actual schema, deserlize the data and do a check
+whether the data is following the schema ---> 
+
+******************************************************************************************************************************************************
+producer side: local cache for schemas
+consumer side: local cache for schemas
+the process is faster
+
+*** schema evolution
+schema id and version number
+
+patterns for schema evolution
+--- forward compatibility: update producer to v2 version of the schema and gradulla upate consumers to the v2 version. will not break.
+add new field, consumer just not consumer this field, the pipeline will not break
+--- backward compatibility: update all consumers to the v2 version, then update producer to v2 version. will not break
+reduce an existing field
+--- 
+
+with time, our schemas will evolve, we add new changes and if changes are compatible, we get a new schema ID and our version number increments
+
