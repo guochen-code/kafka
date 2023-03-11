@@ -25,3 +25,51 @@ offset:1067 positoin:25802
 _______________________________
 when index file data written?
 _______________________________
+F:kafka_2.12-3.2.0/bin/windows/kafka-configs.bat --entity-type topics --entity-name my-topic --describe --all
+--bootstrap-server localhost:9092
+--->
+index.interval.bytes=4096, determine when to write every new row "offset:..position:.." in the index file
+
+_______________________________
+time index
+_______________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-run-class.bat kafka.tools.DumpLogSegments --files
+F:/kafka_logs/server_logs/my-topic-0/000000000000000000000000.timeindex --deep-iteration --print-data-log
+--->
+timestamp: 1668928126125 offset:828
+timestamp: 1668928126145 offset:925
+timestamp: 1668928126189 offset:1058
+# consumer wants data published after a particular timestamp, help broker quickly find out
+# if between, binary search, find approximate timestamp, go to log which contains timestamp data, locate exact timestamp
+_______________________________
+open normal log !!!!!!!
+_______________________________
+F:/kafka_2.12-3.2.0/bin/windows/kafka-run-class.bat kafka.tools.DumpLogSegments --files
+F:/kafka_logs/server_logs/my-topic-0/000000000000000000000000.log --deep-iteration --print-data-log
+
+****************************************************************************************************************************************************
+in reality, kafka have multiple log segments, ont all data in one single big file
+
+clean all the logs
+change log.segment.bytes from 1073741824 to 1000
+start zookeeper
+start server
+F:/kafka_2.12-3.2.0/bin/windows/kafka-topics.bat --bootstrap-server localhost:9092 --create --topic my-topic
+--partition 1 --replication-factor 1 --config index.interval.bytes=10
+use python producer to send data: for e in range(100000), fire and forget
+# open log file to check
+(1) log file is named by using starting offset :xxx (which can be found in the log file)
+so if a consumer is asking for data after offset 110
+which index file to look at - file name tells
+there is a corresponding index file related to the log file. 
+in that index file, it starts to get the position
+based on that position, it will search the log file to exactly locate the message
+
+************** summary:
+step-1: find out that particular log file where your message is stored form the file name
+step-2: for that particular log file, what is the index file, look into the index file, do a binary search, find nearest position range where meessage is availble
+step-3: go back to the particular log file, scan that position range, exactly locate the target offset
+
+in index file, the offset is relative to the base offset.
+For example, if the base offset is 1000000000000000000000000, rather than having to store subsequent offsets 1000000000000000000000001 and 1000000000000000000000002
+they are just 1 and 2
