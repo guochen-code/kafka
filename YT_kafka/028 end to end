@@ -1,0 +1,197 @@
+2 private subnets - msk broker will run for higher availability purpose
+(in demo, 2 brokers, each broker in different subnets which is in different availability zone!!!!!!!!!)
+
+2 public subnets - trigger aws lambda from msk, we need net gateway, which cannot be sitting in private subnets
+because nat gateway is supposed to connect between internet and private subnets
+
+two route tables, 1 public and 1 private
+public route table: local connectivity allowed for the vpc and provided internet access using internet gateway
+private route table: local connectivity allowed, configured net gateway so that msk cluster can talk to aws lambda
+
+# elastic ip attached to net gateway, it charges... remove the elastic ip for cost saving, but net gateway will be disabled
+# so need to start with creating a new net gateway
+
+Step 1:
+--------
+Create a NAT Gateway & attach with Private subnet route table
+
+Step 2:
+---------
+Launch one MSK Cluster in private subnet
+
+Step 3:
+----------
+Create a Lambda code (Python 3.8)
+
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+import json
+
+topic_name='{Provide the topic name here}'
+producer = KafkaProducer(bootstrap_servers=['{Put the broker URLs here}'
+,'{Put the broker URLs here}'],value_serializer=lambda x: dumps(x).encode('utf-8'))
+
+def lambda_handler(event, context):
+    print(event)
+    for i in event['Records']:
+        sqs_message =json.loads((i['body']))
+        print(sqs_message)
+        producer.send(topic_name, value=sqs_message)
+    
+    producer.flush()
+
+Step 4:
+----------
+Increase the timeout for Lambda to 2 mins , provide SQS,MSK and VPC access & put in Private VPC (where MSK Brokers are running)
+go to permissions, attache policies to lambda function:
+- AmazonVPCFullAccess
+- AWSLambdaMSKExecutionRole
+- AmazonSQSFullAccess
+go to vpc:
+- choose same vpc
+- choose same private subnet of MSK
+
+** Configure Lambda Layer
+if lambda layer already created, can add layer by choosing "specify an ARN" 
+
+Step 5:
+---------
+Launch one SQS Queue with visibility timeout to 240 sec (all other properies in the configuration, use default, just change visibility timeout)
+(!! make sure visibility timeout > lambda timeout, otherwise reprocessing the same message)
+
+Step 6:
+----------
+Create an API Gateway and setup integration with SQS Queue
+(use HTTP API - click next, next, next - it's done - IAM role - open IAM - create role - choose service API Gateway - after created, search to find 
+the created role - add permissions - attach policies - choose "AmazonSQSFullAccess" - go back to api gatwat - choose Routes - create a route
+- route and method: POST; /publisher - click create - attach integration - create and attach an integration - integration type: Amazon Simple Queue Service
+- interation action: send message - Queue URL: !!!(go to SQS, copy URL there) - Message body: $request.body.MessageBody
+- invocation role: !!!(go to api gateway, copy ARN there)
+- advanced setting - Region-optional: us-east-1
+
+Step 7:
+---------
+Test the integration , if works , then setup integration with AWS Lambda Producer
+# open postman
+# copy api gateway "Invoke URL"
+# find the resource path, which is defined previously in Routes
+# the final URL would be (Invoke URL + / + resource path) !!!!!!!!
+# send a message using postman
+# go to SQS - Queues - refresh - will see the message - click send and receive messages - click poll for messages
+# delete this testing message in SQS
+********
+go back to lambda, add trigger SQS
+batch size: 5 # number of records in each batch to send to the function
+batch window: 2 # max amount of time to gather records before invoking the function in seconds
+maximum concurrency: 2 # max number of concurrent function instances that the SQS event source can invoke
+click "Add"
+
+
+Step 8:
+---------
+Create an s3 bucket for data archival (record bucket name here for later use) 
+
+Step 9:
+---------
+Configure kinesis Firehose
+- source: Direct PUT # because lambda will do, rather than from "Amazon Kinesis Data Streams"
+- destination: Amazon  S3
+- Destination setting - S3 bucket - copy and paste bucket name
+- Buffer hints, compression and encryption - Buffer size: 2MiB - Buffer interval:120seconds for cost saving in demo
+
+Step 10:
+-----------
+Configure the Consumer Lambda Code: ####### new lambda function
+
+import base64
+import boto3
+import json
+
+client = boto3.client('firehose')
+
+def lambda_handler(event, context):
+	print(event)
+	for partition_key in event['records']:
+		partition_value=event['records'][partition_key]
+		for record_value in partition_value:
+			actual_message=json.loads((base64.b64decode(record_value['value'])).decode('utf-8'))
+			print(actual_message)
+			newImage = (json.dumps(actual_message)+'\n').encode('utf-8')
+			print(newImage)
+			response = client.put_record(
+			DeliveryStreamName='{Kinesis Delivery Stream Name}',
+			Record={
+			'Data': newImage
+			})
+
+Step 11:
+-----------
+Provide KinesisFirehose write access , VPC access , MSK access to this Lambda
+# change lambda timeout
+# permissions - add permissions - attache policies:
+- AmazonVPCFullAccess
+- AmazonMSKFullAccess
+- AWSLambdaMSKExecutionRole
+- AmazonKinesisFirehoseFullAccess
+
+
+Step 12:
+---------- # create a topic in MSK
+Launch an EC2 in a public subnet in same VPC as of MSK Cluster in a public subnet.
+Launch an EC2 in private subnet in same VPC as of MSK Cluster in a private subnet.
+# from public subnet, we will enter into private subnet and then create a topic in MSK clsuter
+# create an ec2 instance - create key pair - give a name and use .ppk - network setting: choose same vpc and public subnet
+  - Auto-assing public IP: Enable
+# launch private ec2 - choose same key pair - choose same vpc and choose private subnet - auto-assign public ip: disable (because we use public ec2)
+
+
+Step 13:
+-----------
+Add private ec2 security group and msk security group both way all traffic.
+# private ec2 - security group - inbound rule: all traffic from msk security group
+# go to msk security group - inbound rule - all traffic from private ec2 security group
+
+Step 14:
+-------------
+Enter in public subnet , from there enter in private subnet.
+# choose private ec2 - go to SSH client - need ppm file
+# we previously download to our local machine, export to pem file using Putty, and use WinSCP to upload to the public ec2
+# in public ec2 - chomd 400 <uploaded file name>.pem - ssh -i "uploadedfile.pem" ec2-user@<private ec2 ip> (both commands available on SSH client tab)
+# ping google, should work, because net gateway is added in private ec2
+# 
+
+sudo yum install java-1.8.0-openjdk
+wget https://archive.apache.org/dist/kafka/2.8.1/kafka_2.12-2.8.1.tgz
+tar -xvf kafka_2.12-2.8.1.tgz
+cd kafka_2.12-2.8.1
+
+bin/kafka-topics.sh --create --topic demo_testing2 --bootstrap-server {} --replication-factor 1 --partitions 2
+
+
+Step 15:
+------------
+Start kafka console consumer and check whether from Lambda messages are getting published in kafka topic or not
+bin/kafka-console-consumer.sh --topic demo_testing2 --bootstrap-server {}
+# also need to change lambda code to add topic name we just created - click deploy !!!!!!!!!!!!!!!!
+# go to postman, post a message ----> should show up in consumer
+
+
+Step 16:
+------------
+Add  MSK Trigger from Consumer Lambda
+# go to consumer lambda and add trigger: MSK - batch size:10; starting position:Latest; batch window:2; Topic name:<topic name> - click "Add"
+# no need to be in the same vpc for this lambda function, because we have net gateway with private subnet, MSK can trigger lambda automatically
+
+Step 17:
+---------
+Peform end to end testing
+
+{"station":"OH","temp":"26.39f"}
+{"station":"WA","temp":"40.00F"}
+{"station":"TX","temp":"15.01F"}
+{"station":"NC","temp":"32.36f"}
+{"station":"WA","temp":"62.86F"}
+{"station":"NC","temp":"49.43f"}
+{"station":"MD","temp":"2.30f"}    
+    
