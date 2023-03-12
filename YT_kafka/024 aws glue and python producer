@@ -1,5 +1,5 @@
 local kafka
-aws glue - schema registry
+aws glue - stream schema registry
 
 Avro Schema Used:
 ------------------------------------
