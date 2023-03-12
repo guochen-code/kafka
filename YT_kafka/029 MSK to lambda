@@ -1,0 +1,148 @@
+- amazon MSK is a highly avaialble service, so it must be configured to run in a minimum of two availability zones in your preferred region
+
+- to comply with security best practice, the brokers are usually configured in private subnets in each region
+
+broker-1 in availability zone 1, in zone 1: public subnet and private subnet, public subnet: NAT gateway, private subnet: MSK broker
+broker 2 in availability zone 2, in zone 2: public subnet and private subnet, public subnet: NAT gateway, private subnet: MSK broker
+
+- for MSK to invoke lambda, you must ensure that there is a NAT gateway running in the public subnet of each region
+
+- it's possible to route the traffic to a single NAT gateway in one AZ for test and development workloads
+
+- for redundancy in production workloads, it's recommended that there is one NAT gateway avaialbe in each AZ
+
+****************************************************************************************************************************************************************
+Step 1:
+------------
+Cretae VPC -- Name -- virtual-private-cloud-lambda  IPv4 CIDR -- 11.0.0.0/16
+Host address range -- 11.0.0.1 - 11.0.255.254
+
+Step 2:
+-----------
+Create 2 public subnets 
+Public-Subnet-A-lambda--11.0.0.0/24--us-east-1a
+Host address range -- 11.0.0.1 - 11.0.0.254
+
+Public-Subnet-B-lambda--11.0.1.0/24--us-east-1b
+Host address range -- 11.0.1.1 - 11.0.1.254
+
+Private-Subnet-A-lambda--11.0.2.0/24--us-east-1a
+Host address range -- 11.0.2.1 - 11.0.2.254
+
+Private-Subnet-B-lambda--11.0.3.0/24--us-east-1b
+Host address range -- 11.0.3.1 - 11.0.3.254
+
+Step 3:
+------------ # after above, no difference between private and public subnets. it depends whether the subnet has internet gateway connectivity or not.
+Create an IGW and attach with VPC
+
+Step 4:
+---------
+Create 2 route tables 1 for Public subnets and 1 for Private subnets
+(Attach IGW with Public route tables)
+# create route table for public subnets
+# edit routes - add route - destination: 0.0.0.0/0; target: <internet gateway> !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# click subnet association - check the box of the two public subnets on the list - save association - 
+# create another route table for private subnets
+# click subnet association - check the box of the two private subnets on the list - save association - 
+
+Step 5:
+------------
+Launch MSK Cluster in Private subnets(keep unauthorised access [because already in private subnets] and plaintext authentication)
+
+Step 6: (do this before step 5)
+-----------
+Create NAT Gateway in public subnet and attach with Private Subnet route table  
+# vpc - net gatway - create nat gateway - choose one public subnet for cost saving - allocate elastic ip (will charge here) - 
+# go to route tables - go to private route table - attache net gateway : add route - Destination 0.0.0.0/0; target: <nat gateway>
+
+Step 7:
+-------------
+Launch an EC2 in a public subnet in same VPC as of MSK Cluster in a public subnet.
+Launch an EC2 in private subnet in same VPC as of MSK Cluster in a private subnet.
+# Auto-assign public IP: disable for private ec2, because we don't need to access it via internet
+# we cannot access via "EC2 instance Connect", can access via "SSH client", will need pem file (downloaded ppk file during the creation of private ec2)
+# (use software PuTTYgen to convert ppk to pem file: load ppk file - Conversions - Export OpenSSH key - save the output as xx.pem)
+# Auto-assign public IP: able for public ec2
+# use WinSCP to upload the pem file to public ec2 
+
+Step 8:
+-----------
+Add private ec2 security group and msk security group both way all traffic.
+################## security group setup to allow private ec2 to MSK and vice versa
+
+Step 9:
+-------------
+Enter in public subnet , from there enter in private subnet.
+
+Step 7:
+-----------
+sudo yum install java-1.8.0-openjdk
+wget https://archive.apache.org/dist/kafka/2.8.1/kafka_2.12-2.8.1.tgz
+tar -xvf kafka_2.12-2.8.1.tgz
+cd kafka_2.12-2.8.1
+
+bin/kafka-topics.sh --create --topic demo_testing2 --bootstrap-server  --replication-factor 1 --partitions 2
+
+Step 8:
+----------
+Perform local testing:
+-----------------------------
+bin/kafka-console-producer.sh --topic demo_testing2 --bootstrap-server 
+
+In a new console start the kafka consumer--
+cd kafka_2.12-2.8.1
+bin/kafka-console-consumer.sh --topic demo_testing2 --bootstrap-server 
+
+
+Step 8:
+-----------
+You set up a target Lambda function with MSK and VPC access.
+
+Step 9:
+-----------
+Create Lambda Function with MSK Trigger 
+# because we have net gateway, that's why it works !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Sample Event:
+------------------
+{
+   "eventSource":"aws:kafka",
+   "eventSourceArn":"",
+   "bootstrapServers":"",
+   "records":{
+      "demo_testing2-0":[                  # this key is partition key, demo_testing2 is topic name, -0 refers to partition 0
+         {
+            "topic":"demo_testing2",
+            "partition":0,
+            "offset":34,
+            "timestamp":1674023898925,
+            "timestampType":"CREATE_TIME",
+            "value":"eyJIZWxsbyI6IldvcmxkIn0=", # comes in base64 encoded format, need to decode it in our lambda code
+            "headers":[
+               
+            ]
+         }
+      ]
+   }
+}
+
+
+
+import base64
+import boto3
+import json
+
+def lambda_handler(event, context):
+    # TODO implement
+    print(event)
+    for partition_key in event['records']:
+        partition_value=event['records'][partition_key]
+        for record_value in partition_value:
+             print((base64.b64decode(record_value['value'])).decode())
+             
+**********************************************************************************************************************************************************
+summary:
+note this is a serverless consumer !!!!!!!!
+
+don't forget to terminate nat gateway, because of elastic ip associated with it. will be some charges.
