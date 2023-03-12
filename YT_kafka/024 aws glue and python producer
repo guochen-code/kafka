@@ -65,3 +65,13 @@ record_metadata =producer.send('glue_schema_bms', value=(data, schema)).get(time
 print(record_metadata.topic)
 print(record_metadata.partition)
 print(record_metadata.offset)
+
+********************************************************************************************************************************************
+if new schema, producer will understand this schema got changed, will go to registry and schema registry will do a compatibility check with earlier version
+if versions are compatible, it will register that in schema registry and return schema ID, avro serializer will add new ID with serialized data and 
+send to kafka cluster
+consumer will get new schema ID, local cache will not be available, so will go to registry and get updated schema, and use that to deserialize data
+
+schema registry automaticall handles schema evolution
+
+but if add a new field, it will fail, because it is not backward compatibility, should start with consumer not producer.
