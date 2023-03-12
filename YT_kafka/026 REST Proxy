@@ -1,0 +1,98 @@
+start an ec2 instance, start kafka on it - allow TCP from anywhere in security group
+
+start another ec2 instance, start REST Proxy on it - all traffic from anywhere in security group
+
+Confluent Kafka Installation:
+-----------------------------------------------------
+wget  http://packages.confluent.io/archive/...
+sudo yum install java-1.8.0-openjdk
+
+
+unzip confluent-5.1.2-2.11.zip
+
+export CONFLUENT_HOME=/home/ec2-user/confluent-5.1.2
+export PATH=$PATH:$CONFLUENT_HOME/bin
+
+# changes made in the kafka-rest.properties file
+vi confluent-5.1.2/etc/kafka-rest/kafka-rest.properties 
+# locate below line in the file, make change:
+bootstrap.servers=PLAINTEXT://{}:9092 # public ip address of kafka ec2 instance
+# start a new line add the following:
+advertised.listeners={}:8082 # public ip address of rest proxy ec2 instance
+
+# start our confluent rest proxy server:
+confluent-5.1.2/bin/kafka-rest-start confluent-5.1.2/etc/kafka-rest/kafka-rest.properties 
+
+create a topic in kafka ec2
+
+****************************************************************************************** use rest proxy api
+# find out number of topics
+# go to postman
+get request - http://<public ip of rest proxy ec2>:8082/topics
+
+# insert data
+# go to postman
+post request - http://<public ip of rest proxy ec2>:8082/topics/<topic name>
+# in postman headers:
+Content-Type: application/vnd.kafka.json.v2+json
+# in psotman body -> json
+{"records":[{"value":{"name": "testUser"}}]}
+
+# pass message with key
+{
+  "records": [
+    {
+      "key": "1",
+      "value": {
+        "id": "1",
+        "customer_code": "1",
+        "telephone": "888582158",
+        "email": "supplier1@test.com",
+        "language": "EN"        
+      }
+    }
+  ]
+}
+
+# can post multiple messages at the same time
+{
+  "records": [
+    {
+      "key": "3",
+      "value": {
+        "id": "3",
+        "customer_code": "3",
+        "telephone": "888582154",
+        "email": "supplier3@test.com",
+        "language": "EN"        
+      }
+    },
+  {
+      "key": "2",
+      "value": {
+        "id": "2",
+        "customer_code": "2",
+        "telephone": "788682158",
+        "email": "supplier2@test.com",
+        "language": "EN"        
+      }
+    }
+  ]
+}
+*********************************************************************************************************************************************************************
+in case of publishing data in MSK Cluster using MSK Rest Proxy , the advantages are--
+It's almost no coding approach , kind off plug & play as we have everything readily available from Confluent ..
+but the disadvantages are --
+1) it need maintenance & monitoring (if something wrong happens in ec2 & the code goes down , then it can't automatically up) 
+2) Also the approach is not scalable alone , you need to add load balancer to handle the production level traffic ..
+
+
+In case of Lambda based approach (API Gateway -> SQS -->Lambda-->MSK) , the advantages are -
+1)The producer is serverless
+2)If something wrong happens in Lambda , the messages will not be lost , as they will be available in SQS
+3)Alert using DLQ can be implemented easily ..
+
+On the other hand , the disadvantages with Lambda based approach are --
+1)code has to be written instead of using existing framework like Proxy 
+2)Lambda also has it's own limitation , it will throttle if the traffic is very high..
+
