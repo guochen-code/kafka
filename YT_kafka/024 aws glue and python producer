@@ -75,3 +75,8 @@ consumer will get new schema ID, local cache will not be available, so will go t
 schema registry automaticall handles schema evolution
 
 but if add a new field, it will fail, because it is not backward compatibility, should start with consumer not producer.
+if you run python producer script, it will fail and if you go to aws glue, will find failed status for this registration.
+
+if change the topic name in producer, it will create a new schema in aws glue, remember to change the schema file
+
+
