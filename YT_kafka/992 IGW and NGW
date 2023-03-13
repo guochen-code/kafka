@@ -1,0 +1,37 @@
+Internet gateway allows instance with public ip address to access internet
+Nat gateway allows instance with NO public ip address to access internet
+**************************************************************************************************
+vpc is region specific
+subnet is AZ specific
+aws services located in subnet
+
+vpc has a default main route table, which makes ec2-1 and ec2-2 communicate with each other even they are in different sbunets
+
+public and private subnet
+public subnet - own route table (add internet gateway) - internet gateway is to whole vpc - all ec2 in public subnet can access internet
+private subnet - own route table - cannot access internet
+
+ssh to ec2 in a vpc, need:
+(1) internet gateway, attach to vpc
+(2) route table, add internet gateway
+
+vpc level 
+IPV4 CIDR: 
+10.0.0.0/16
+1.0.0.0.1 - 10.0.255.254
+10.0.0.0.0 -> network ip
+10.0.255.255 -> broadcasting
+
+subnet level
+10.0.1.0/24
+10.0.1.1-10.0.1.254
+
+NAT: network address translation
+(1) access internet, need public ip
+(2) private ec2 does not have public ip
+(3) require translation of private ip to public ip
+Create NAT:
+(1) need to be in public subnet
+(2) need elastic ip address
+Associate:
+(1) private route table - edit routes - destination: 0.0.0.0/0, target: <NAT gateway>
