@@ -1,0 +1,194 @@
+Internet gateway allows instance with public ip address to access internet
+Nat gateway allows instance with NO public ip address to access internet
+********************************************************************************************************************************************************************
+vpc is region specific
+subnet is AZ specific
+aws services located in subnet
+
+vpc has a default main route table, which makes ec2-1 and ec2-2 communicate with each other even they are in different sbunets
+
+public and private subnet
+public subnet - own route table (add internet gateway) - internet gateway is to whole vpc - all ec2 in public subnet can access internet
+private subnet - own route table - cannot access internet
+
+ssh to ec2 in a vpc, need:
+(1) internet gateway, attach to vpc
+(2) route table, add internet gateway
+
+vpc level 
+IPV4 CIDR: 
+10.0.0.0/16
+1.0.0.0.1 - 10.0.255.254
+10.0.0.0.0 -> network ip
+10.0.255.255 -> broadcasting
+
+subnet level
+10.0.1.0/24
+10.0.1.1-10.0.1.254
+
+NAT: network address translation
+(1) access internet, need public ip
+(2) private ec2 does not have public ip
+(3) require translation of private ip to public ip
+Create NAT:
+(1) need to be in public subnet
+(2) need elastic ip address
+Associate:
+(1) private route table - edit routes - destination: 0.0.0.0/0, target: <NAT gateway>
+********************************************************************************************************************************************************************
+why vpc endpoint - because elastic ip charges
+
+vpc endpoint enables connections between a vpc and supported services, without requireing that you use an internet gateway, NAT device etic.
+supported services like s3 or dynamodb should be in the same region
+
+ec2 to access s3, need IAM role - AmazonS3FullAccess
+
+no nat gateway, ssh to private ec2 use public ec2, aws configure, aws s3 ls -> no response
+create endpoint -> choose private route !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+aws s3 ls -> working now
+ping google.com -> not work
+# because it is not publicly going to internet, it's just connectd to private network via the vpc endpoint
+********************************************************************************************************************************************************************
+vpc endpoint to dynamodb
+
+step-1
+----------
+create an IAM with dynamodb and s3 access
+
+step-2
+----------
+launch ec2 in public subnet (ec2 A) - choose IAM role created
+launch ec2 in private subnet (ec2 B) - choose IAM role created
+
+step-3
+----------
+transfer ppem file in ec2 A via WinSCP
+
+step-4
+----------
+ssh in ec2 B
+
+step-5
+----------
+configure aws region 
+# generally need access scret key and region name
+# already configured role level access in the ec2, so no need to specify access key and secret key but need to mention region
+# in private ec2, type"
+aws configure
+-> aws access key id: automatically handled
+-> aws secret access key: automatically handled
+-> default region name: <region name>
+
+step-6
+----------
+create a dynamodb table in same region
+
+step-7
+---------
+execute the below command in ec2-B
+aws dynamodb list-tables ---> no work
+
+step-8
+----------
+create vpc endpoint for dynomodb & s3 & attach those to private route table
+# why need s3, store data files, so private ec2 can download from s3 and use python code to process the data file
+
+step-9
+----------
+execute same code again:
+aws dynamodb list-table
+
+step-10
+-----------
+use s3 vpc endpoint to download the dta from s3 to private ec2
+# copy S3 URL
+# pwd -> /home/ec2-user 
+# aws s3 cp <s3 url> /home/ec2-user
+
+step-11
+----------
+Code:
+----------
+import boto3
+import json
+client_dynamo=boto3.resource('dynamodb',region_name='us-east-2')
+table=client_dynamo.Table("{}") # table name here
+records=""
+with open('{}','r') as datafile: # json file path in private ec2
+  records=json.load(datafile)
+count=0;
+for i in records:
+  i['roll_no']=str(count)
+  print(i)
+  i['X']=str(i['X'])
+  i['Y']=str(i['Y'])
+  response=table.put_item(Item=i)
+  count+=1
+  
+step-12
+----------  
+pip3 install boto3 ---> not working, because no internet access --- use NAT gateway
+
+step-13
+----------
+create a nat gateway to install boto3 and do pip3 install boto3 again
+# attache nat gateway to private route table
+# private route table - edit routes - destination:0.0.0.0/0; target:<nat gateway>
+
+step-14
+----------
+delete the nat gateway and run the code again
+# delete nat gateway
+# release elastic ip
+**********************************************************************************************************************************************************************
+json data sample:
+[
+  {"Series":"I", "X":10.0, "Y":8.04},
+  {"Series":"I", "X":8.0, "Y":6.95},
+  {"Series":"I", "X":13.0, "Y":7.58},
+  {"Series":"I", "X":9.0, "Y":8.81},
+  {"Series":"I", "X":11.0, "Y":8.33},
+  {"Series":"I", "X":14.0, "Y":9.96},
+  {"Series":"I", "X":6.0, "Y":7.24},
+  {"Series":"I", "X":4.0, "Y":4.26},
+  {"Series":"I", "X":12.0, "Y":10.84},
+  {"Series":"I", "X":7.0, "Y":4.81},
+  {"Series":"I", "X":5.0, "Y":5.68},
+
+  {"Series":"II", "X":10.0, "Y":9.14},
+  {"Series":"II", "X":8.0, "Y":8.14},
+  {"Series":"II", "X":13.0, "Y":8.74},
+  {"Series":"II", "X":9.0, "Y":8.77},
+  {"Series":"II", "X":11.0, "Y":9.26},
+  {"Series":"II", "X":14.0, "Y":8.10},
+  {"Series":"II", "X":6.0, "Y":6.13},
+  {"Series":"II", "X":4.0, "Y":3.10},
+  {"Series":"II", "X":12.0, "Y":9.13},
+  {"Series":"II", "X":7.0, "Y":7.26},
+  {"Series":"II", "X":5.0, "Y":4.74},
+
+  {"Series":"III", "X":10.0, "Y":7.46},
+  {"Series":"III", "X":8.0, "Y":6.77},
+  {"Series":"III", "X":13.0, "Y":12.74},
+  {"Series":"III", "X":9.0, "Y":7.11},
+  {"Series":"III", "X":11.0, "Y":7.81},
+  {"Series":"III", "X":14.0, "Y":8.84},
+  {"Series":"III", "X":6.0, "Y":6.08},
+  {"Series":"III", "X":4.0, "Y":5.39},
+  {"Series":"III", "X":12.0, "Y":8.15},
+  {"Series":"III", "X":7.0, "Y":6.42},
+  {"Series":"III", "X":5.0, "Y":5.73},
+
+  {"Series":"IV", "X":8.0, "Y":6.58},
+  {"Series":"IV", "X":8.0, "Y":5.76},
+  {"Series":"IV", "X":8.0, "Y":7.71},
+  {"Series":"IV", "X":8.0, "Y":8.84},
+  {"Series":"IV", "X":8.0, "Y":8.47},
+  {"Series":"IV", "X":8.0, "Y":7.04},
+  {"Series":"IV", "X":8.0, "Y":5.25},
+  {"Series":"IV", "X":19.0, "Y":12.50},
+  {"Series":"IV", "X":8.0, "Y":5.56},
+  {"Series":"IV", "X":8.0, "Y":7.91},
+  {"Series":"IV", "X":8.0, "Y":6.89}
+]
