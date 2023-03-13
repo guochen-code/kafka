@@ -1,0 +1,9 @@
+- reading data from kafka in real-time
+- after processing it, writing it back to kafka (another topic)
+
+common frameworks:
+- spark
+- storm
+- flink
+- faust (python based)
+
