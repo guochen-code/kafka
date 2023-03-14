@@ -7,6 +7,88 @@ to load changes.
 the undelying hardware, and auto-scales connectors to match changes in throughput.
 - as a result, you can focus on building applications rather than managing infrastructure
 
+step-1 private and public key
+----------------------------------
+use previous method, these files contain keys that may contain spaces and new line characters which need to be removed --
+export SNOWFLAKE_PVT_KEY=$(echo 'sed -e `2,$!id' -e '$d' -e 's/\n/ /g' rsa_key.pem`|tr -d ' ')
+echo $SNOWFLAKE_PVT_KEY > rsa_key_p8.out
 
+step-2 one private ec2 and one public ec2, install kafka, java on private ec2
+create a topic using bootstrap-server from MSK
 
+step-3 create custom plugins
+-------------------------------------
+https://mvnrepository.com/artifact/com.snowflake/snowflake-kafka-connector/1.5.0
+# this jar file has logic reading from kafka and writting to snowflake
+# download to local machine 
+# upload to S3
+# go to MSK page
+MSK connect
+- Connectors
+- Custom plugins
+- Worker configurations
+# choose custom plugins
+# copy and paste s3 url
+# finish creation
+
+step-4 create connector
+-----------------------------------
+# go back to MSK page
+# choose connectors
+create connector - use existing custom plugin
+....
+....
+copy and paste connector configuration:
+connector.class=com.snowflake.kafka.connector.SnowflakeSinkConnector
+tasks.max=8
+topics=demo_testing2
+snowflake.topic2table.map=demo_testing2:fake_data_real_time_demo
+buffer.count.records=10000
+buffer.flush.time=60
+buffer.size.bytes=5000000
+snowflake.url.name= # <unique identifier>-us-east-1.snowflakecomputing.com # 
+snowflake.user.name=
+snowflake.private.key=
+snowflake.database.name=RAMU
+snowflake.schema.name=PUBLIC
+key.converter=com.snowflake.kafka.connector.records.SnowflakeJsonConverter   # note here json converter!!!!!!!!!!!!!!!!!!!!!!
+value.converter=com.snowflake.kafka.connector.records.SnowflakeJsonConverter
+********************************************************************************8
+IAM role: s3--give s3 full access
+Trust Relationship--
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "kafkaconnect.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringEquals": {
+                    "aws:SourceAccount": "<Account ID>" # copy from your account profile
+                }
+            }
+        }
+    ]
+}
+*************************************************************************************************
+Create a cloudwatch log group
+******************************************************************************************
+
+step-5 
+--------------------------------------------------
+start a console producer to test the workflow
+start a console consumer
+in snowflake, check:
+select * from ramu_public.fake_data_real_time_demo;
+
+*********************************************
+note:
+only write json data to snowflake 
+because in the value converter we are using json serializer
+if write string data: test123, will see it in console consumer, but not in snowflake
+integer is ok
 
