@@ -1,0 +1,70 @@
+error occurs from kafka topic to sink connector
+
+(1) error propagate: fail the connector - fail fast - error.tolerance = None
+(2) handle error:
+ (2.1) silently ignore bad message - error.tolerance = all, connector will not fail
+ (2.2) bad messages go to dead letter queue/topic - [error.tolerance = all] + [topic name] (in which the bad messages will be written)
+
+Code:
+--------
+openssl genrsa -out rsa_key.pem 2048
+openssl rsa -in rsa_key.pem -pubout -out rsa_key.pub
+
+
+Start Zookeeper:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/zookeeper-server-start.bat F:/kafka_2.12-3.3.1/config/zookeeper.properties
+
+Start Broker: 
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-server-start.bat F:/kafka_2.12-3.3.1/config/server.properties
+
+Start Kafka Topic:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic demo_testing3 --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic dlq_sink1234 --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 # bad topic
+
+Produce Messages:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-console-producer.bat --topic demo_testing3 --bootstrap-server localhost:9092
+
+
+Start Kafka Connector:
+--------------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/connect-standalone.bat F:/kafka_2.12-3.3.1/config/connect-standalone.properties F:/kafka_2.12-3.3.1/config/SF_connect.properties
+
+SF_Connect Properties:
+-------------------------------------
+connector.class=com.snowflake.kafka.connector.SnowflakeSinkConnector
+tasks.max=8
+topics={}
+snowflake.topic2table.map={}:{}
+buffer.count.records=100
+buffer.flush.time=20
+buffer.size.bytes=50000
+snowflake.url.name={}
+snowflake.user.name={}
+snowflake.private.key={}
+snowflake.database.name={}
+snowflake.schema.name={}
+key.converter=org.apache.kafka.connect.storage.StringConverter
+key.converter.schemas.enable: false
+value.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter.schemas.enable: false
+name={}
+errors.tolerance: all
+errors.deadletterqueue.topic.name:
+errors.deadletterqueue.context.headers.enable: true
+
+Start Kafka Consumer:
+-------------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-console-consumer.bat --topic demo_testing3 --bootstrap-server localhost:9092
+
+Consumer Messages from DLQ:
+----------------------------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-console-consumer.bat --topic dlq_sink1234 --bootstrap-server localhost:9092
+
+# try to publish good data and bad data
+good: {"hello":"world"}
+bad: this is message
