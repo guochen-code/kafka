@@ -1,0 +1,33 @@
+- whenever a parition is assigned to our consumer, we need to make sure that we position the consumer at the latest comitted offset before processing any records
+- conversely, when an assignment is revoked, we need to commit the current offset to make sure that they are not lost
+
+this can be implemented using a rebalance listener whic his registered when we subscribe to the topic
+
+rebalance listener
+---------------------------
+
+class MyConsumerRebalanceListener(kafka.ConsumerRebalanceListener):
+  def on_partitions_revoked(self,revoked):
+    print('Partition %s revoked' % revoked)
+  def on_partitions_assigned(self,assigned):
+    print('Partition %s assigned' % assgined)
+    
+consumer = KafkaConsumer(bootstrap_server=['localhost:9092'], value_deserializer=lamdabd m:json.loads(m.decode('utf-8')),
+                         group_id=<group id>, auto_offset_reset='earliest', enable_auto_commit=False)
+                         
+listener = MyConsumerRebalanceListener()
+consumer.subscribe('hello world', listener = listener)
+
+for message in consumer:
+    print(message)
+    print("The value is : {}".format(message.value))
+    print("The key is : {}".format(message.key))
+    print("The topic is : {}".format(message.topic))
+    print("The partition is : {}".format(message.partition))
+    print("The offset is : {}".format(message.offset))
+    print("The timestamp is : {}".format(message.timestamp))
+    tp=TopicPartition(message.topic,message.partition)
+    om = OffsetAndMetadata(message.offset+1, message.timestamp)
+    consumer.commit({tp:om})
+    print('*' * 100)
+  
