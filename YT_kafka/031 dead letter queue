@@ -68,3 +68,7 @@ F:/kafka_2.12-3.3.1/bin/windows/kafka-console-consumer.bat --topic dlq_sink1234 
 # try to publish good data and bad data
 good: {"hello":"world"}
 bad: this is message
+
+in production, if use this architecture
+- have another connector: S3 connector - reading from bad topic - write to s3 bucket - lambda function - SNS/SES, send email to developer team
+- the bad messages also saved, in s3, run a glue crawler on top of these data nd update a Athena table - investigate reasons for message failure
