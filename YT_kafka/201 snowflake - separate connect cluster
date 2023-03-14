@@ -1,0 +1,26 @@
+********************************************************
+two clusters:
+(1) kafka cluster
+(2) kafka connector cluster
+********************************************************
+step-1 laucn one ec2 and install kafka
+-----------------------------------------
+
+producer on local machine and kafka on ec2
+kafka connector also on local machine
+
+create SF_connect.properies file on local machine !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! still need kafka installed on local machine
+
+step-2 create connection between kafka cluster and connect cluster
+----------------------------------------------------------------------
+# on local machine, in connect-standalone properties file
+# locate bootstrap.servers = localhost:9092, change this to:
+bootstrap.servers = <ec2 public id>:9092
+
+kafka on ec2, snowflake local,
+ste-3 start connector on local machine
+-----------------------------
+F:/kafka_2.12-3.2.0/bin/windows/connect-standalone.bat
+F:/kafka_2.12-3.2.0/config/connect-standalone.properties
+F:/kafka_2.12-3.2.0/config/SF_connect.properties
+
