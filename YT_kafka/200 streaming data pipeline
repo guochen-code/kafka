@@ -25,7 +25,7 @@ cat rsa_key.pub
 # create a database
 drop database if exists RAMU;
 create database RAMUl
-alter user SATADRU set rsa_public_key='<public key>';
+alter user SATADRU set rsa_public_key='<public key>'; # here SATADRU is <user name>
 desc user SATADRU;
 alter user SATADRU unset rsa_public_key;
 
