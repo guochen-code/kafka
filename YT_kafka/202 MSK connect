@@ -1,0 +1,12 @@
+- kafka connect is an open-source component of apache kafka that provides a framework for connecting with external systems such as database, key-value stores,
+search indexes, and file systems.
+- however, manually running kafka connect clusters requires you to plan and provision the required infrastructure, deal with cluster operations, and scale it in reponse
+to load changes.
+- MSK connect allows you to configure and deploy a connector using kafka connect with a just few clicks
+- MSK connect provisions the required reources and set up the cluster. it continuously monitors the health and delivery state of connectors, patches and manages
+the undelying hardware, and auto-scales connectors to match changes in throughput.
+- as a result, you can focus on building applications rather than managing infrastructure
+
+
+
+
