@@ -1,0 +1,90 @@
+requirement: message coming a particular kafka topic, it should be saved in a particular snowflake table in cloud data warehouse
+
+step-1 kafka snowflake integration
+-----------------------------------------
+download the required jar file --
+https://mvnrepository.com/artifact/com.snowflake/snowflake-kafka-connector/1.5.0
+
+put this jar in libs folders
+
+update the plugin.path in kafka connect-standalone properies
+# go to the last line, uncomment and add this:
+plugin.bath = F:/kafka_2.12-3.2.0/libs
+
+step-2 create private and public key-pair (cannot use openssl in windows, have to be in linux like ec2)
+-----------------------------------------
+openssl genrsa -out rsa_key.pem 2048 # generate private key without password, in production you can configure private key with password
+openssl rsa -in rsa_key.pem -pubout -out rsa_key.pub # generate public key corresponding to the private key
+ls ---> show the private (rsa_key.pem) and public key (rsa_key.pub)
+
+step-3 configure public key in snowflake
+-------------------------------------------
+cat rsa_key.pub
+
+# go to snowflake
+# create a database
+drop database if exists RAMU;
+create database RAMUl
+alter user SATADRU set rsa_public_key='<public key>';
+desc user SATADRU;
+alter user SATADRU unset rsa_public_key;
+
+# verify the public key is configured properly or not --
+desc user SATADRU;
+
+step-4 create a SF_connect.properies file with bleow properties in config folder --
+---------------------------------------------------------------------------------------
+important to set up connection between snowflake and kafka
+connector.class=com.snowflake.kafka.connector.SnowflakeSinkConnector
+tasks.max=8
+topic={topic_name}
+snowflake.topic2table.map={topic_name}:{snowflake_table_name}
+buffer.count.records=10000
+buffer.flush.time=60
+buffer.size.bytes=5000000 # kafka to snoeflake, whatever first
+snowflake.url.name={Snowflake URL}
+snowflake.uer.name={Snowflake User Name}
+snowflake.private.key=
+snowflake.database.name={Snowflake Database Name}
+snowflake.schema.name={Snowflake Schema Name} # can use default if don't have: PUBLIC
+key.converter=com.snowflake.kafka.connector.records.SnowflakeJsonConverter
+value.converter=com.snowflake.kafka.connector.records.SNowflakeJsonConverter
+name={} # any name
+# can open in pycharm to check the syntax
+
+step-5
+---------------------------------------------------------------------------------------
+start zookeeper
+starat server
+create topic
+
+run python producer:
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+
+topic_name='demo_ty_kafka_snowflake'
+producer=KafkaProducer(bootstrap_servers=['local_host:9092'],value_serializer=lambda x:dumps(x).encode('utf-8'))
+for e in range(1000):
+  data = {'numer':e}
+  print(data)
+  produer.send(topic_name,value=data)
+  sleep(1)
+  
+step-6 start the Connector:
+----------------------------------
+F:/kafka_2.12-3.2.0/bin/windows/connect-standalone.bat
+F:/kafka_2.12-3.2.0/config/connect-standalone.properties
+F:/kafka_2.12-3.2.0/config/SF_connect.properties
+
+step-7 Unset public key:
+--------------------------------
+alter user SATADRU unset rsa_public_key;
+
+********************************************************************************
+NOTE: for copy and paste private key
+make sure it is in one line format
+if multiple lines, make sure at the end of each line, add symbol "\"
+********************************************************************************
+behind the scene, there is snow pipe which is one of the most expensive services from snowflake
+alternatively, put data into s3 and execute copy command using some other mechanism or ETL tool 
