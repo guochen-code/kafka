@@ -1,0 +1,58 @@
+Age Based Filter Example:
+-------------------------------------------------
+import faust
+
+app=faust.App('demo-streaming',broker='localhost:9092')
+
+class Greeting(faust.Record,serializer='json'):
+    name:str
+    age:int
+
+input_topic = app.topic('hello_world', value_type=Greeting)
+aged_table = app.Table("major-count",key_type=str,value_type=str,partitions=1,default=int)
+
+
+@app.agent(input_topic)
+async def processor(stream):
+    async for message in stream:
+        if(message.age>30):
+            aged_table[str(message.name)] = message.age
+        print(aged_table.as_ansitable(title='Aged Tabled'))
+
+# you cannot modify a table outside of a stream operation; this means that you can only mutate the table from within an async for event in stream: block.
+
+# you can not mutate data in kafka stream, but after get data from stream you can mutate and put them into a table
+# stream is also unbounded, infinite loop while table is bounded
+# table is just in memory dictionary here
+
+****************************************************************************************************************************************************************
+
+Word Count Example:
+---------------------------------------------
+import faust
+
+app=faust.App('demo-streaming1',broker='localhost:9092')
+
+
+
+input_topic = app.topic('hello_world2', value_type=str,value_serializer='raw')
+aged_table = app.Table("word-count",key_type=str,value_type=str,partitions=1,default=int)
+
+
+@app.agent(input_topic)
+async def processor(stream):
+    async for message in stream:
+        data_part=message.split()
+        for ms in data_part:
+            aged_table[str(ms)] += 1
+        print(aged_table.as_ansitable(title='Count Tabled'))
+        
+# terminate faust app, but keep publishing more messages
+# restart faust app
+# all previous messages are still in the table, new messages are also included
+
+********* summay:
+- a table is distributed in-memory dictionary, backed by a kafka changelog topic used for persistence and fault-tolerance
+- we can replay the changelog upon network failure and node restarts, allowing us to rebuild the state of the table as it was before the fault
+- stream is unbounded and immutatble
+- table is bounded and mutable
