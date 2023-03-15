@@ -7,3 +7,43 @@ common frameworks:
 - flink
 - faust (python based)
 
+Code:
+--------
+Start Zookeeper:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/zookeeper-server-start.bat F:/kafka_2.12-3.3.1/config/zookeeper.properties
+
+Start Broker:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-server-start.bat F:/kafka_2.12-3.3.1/config/server.properties
+
+Start Kafka Topic:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic hello_world --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+
+Install the required modules:
+------------------------------
+pip install faust-streaming
+pip install kafka-python
+
+Python Code:
+------------------------------
+import faust
+
+app=faust.App('demo-streaming',broker='localhost:9092')
+
+topic = app.topic('hello_world', value_type=str,value_serializer='raw')
+
+@app.agent(topic)
+async def processor(stream):
+    async for message in stream:
+        print(f'Received {message}')
+
+To run Fause Application
+------------------------------
+faust -A main worker -l info # main is the python script name
+
+
+Kafka Console Producer:
+-------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-console-producer.bat --topic hello_world --bootstrap-server localhost:9092
