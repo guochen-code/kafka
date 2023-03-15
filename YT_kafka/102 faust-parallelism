@@ -1,0 +1,66 @@
+Reference Documentation:
+-----------------------------------------------
+https://faust.readthedocs.io/en/lates...
+
+Code:
+--------------
+Start Zookeeper:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/zookeeper-server-start.bat F:/kafka_2.12-3.3.1/config/zookeeper.properties
+
+Start Broker: 
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-server-start.bat F:/kafka_2.12-3.3.1/config/server.properties
+
+Start Kafka Topic:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic hello_world5 --bootstrap-server localhost:9092 --replication-factor 1 --partitions 2
+
+
+Parallel Processing:
+----------------------
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+
+
+def custom_partitioner(key, all_partitions, available):
+    """
+    Customer Kafka partitioner to get the partition corresponding to key
+    :param key: partitioning key
+    :param all_partitions: list of all partitions sorted by partition ID
+    :param available: list of available partitions in no particular order
+    :return: one of the values from all_partitions or available
+    """
+    print("The key is  : {}".format(key))
+    print("All partitions : {}".format(all_partitions))
+    print("After decoding of the key : {}".format(key.decode('UTF-8')))
+    return int(key.decode('UTF-8'))%len(all_partitions)
+
+
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'],partitioner=custom_partitioner)
+topic_name='hello_world5'
+
+for e in range(1000):
+    data = {'number' : e}
+    print(data)
+    producer.send(topic_name, key=str(e).encode(), value=str(data).encode())
+    sleep(0.5)
+
+Consumer:
+--------------
+import faust
+
+app=faust.App('demo-streaming',broker='localhost:9092')
+
+topic = app.topic('hello_world5', value_type=str,value_serializer='raw')
+
+@app.agent(topic)
+async def processor(stream):
+    async for message in stream:
+        print(f'Received {message}')
+  
+Start instances:
+------------------
+faust -A main worker -l info
+faust -A main worker -l info --web-port=6067 # start a new worker
