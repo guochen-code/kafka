@@ -1,0 +1,12 @@
+** note it is on partition level:
+
+unclean.leader.election.enable = true -> highly available, may have data loss
+1 leader and 2 replicas, if 2 down, only 1 replica, it will be selected as leader, new message will come
+
+unclean.leader.election.enable = false -> highly durable, no data loss
+no leader will be selected, message will be stopped to publish into this parition
+only when there are 2 brokers up running, 1 leader and 1 replica. in other words, there must be 1 replica. then will resume publishing data into this partition.
+
+default value is true
+
+- if in finance or banking domain, better to set this property to false
