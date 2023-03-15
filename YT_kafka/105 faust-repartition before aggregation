@@ -1,0 +1,141 @@
+problem: count how many times each country appears - 2 partition - partition 1 may have country-A and partition 2 may also have country-A
+         - so the data is distributed across two faust tables, not correct summation - need to combine all tables together
+solution: repartition - still have 2 partitions - but this time all country-A goes to repartition 1, so the summation will be correct for country-A
+
+*********************************************************************************************************************************************************
+Tables:
+---------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic transactions_topic1 --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3
+
+Producer Code:
+------------------
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+import random
+
+
+def custom_partitioner(key, all_partitions, available):
+    """
+    Customer Kafka partitioner to get the partition corresponding to key
+    :param key: partitioning key
+    :param all_partitions: list of all partitions sorted by partition ID
+    :param available: list of available partitions in no particular order
+    :return: one of the values from all_partitions or available
+    """
+    return int(key.decode('UTF-8'))%len(all_partitions)
+
+
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'],partitioner=custom_partitioner,value_serializer=lambda x: dumps(x).encode('utf-8'))
+topic_name='transactions_topic1'
+
+countr_list=["India","Nepal","USA","Bhutan"]
+
+for e in range(10):
+    data={"user_id":e,"country":random.choice(countr_list),"amount":1}
+    print("Inserting the datae : ",data)
+    producer.send(topic_name, key=str(e).encode(), value=(data))
+    sleep(0.2)
+
+
+
+Consumer Code:
+----------------
+import faust
+
+app=faust.App('demo-transactions_grouping12345',broker='localhost:9092',topic_partitions=3)
+
+class withdrawals_data(faust.Record,serializer='json'):
+    user_id:int
+    country:str
+    amount:int
+
+input_topic = app.topic('transactions_topic1', value_type=withdrawals_data)
+country_wise_withdrawals_table = app.Table("country_wise_withdrawals1234",default=int)
+
+
+@app.agent(input_topic)
+async def processor(stream):
+    async for message in stream:
+        print(message)
+        country_wise_withdrawals_table[message.country]+= 1
+        print(country_wise_withdrawals_table.as_ansitable(title='Count Tabled'))
+		
+Start instances:
+------------------
+faust -A main worker -l info
+faust -A main worker -l info --web-port=6067
+
+# refer to the problem statement, above code will not give correct summation.
+
+*****************************************************************************************************************************************************************
+
+Correct Case:
+----------------	
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic transactions_topic2 --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3
+
+Producer:
+-------------
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+import random
+
+
+def custom_partitioner(key, all_partitions, available):
+    """
+    Customer Kafka partitioner to get the partition corresponding to key
+    :param key: partitioning key
+    :param all_partitions: list of all partitions sorted by partition ID
+    :param available: list of available partitions in no particular order
+    :return: one of the values from all_partitions or available
+    """
+    return int(key.decode('UTF-8'))%len(all_partitions)
+
+
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'],partitioner=custom_partitioner,value_serializer=lambda x: dumps(x).encode('utf-8'))
+topic_name='transactions_topic2'
+
+countr_list=["India","Nepal","USA","Bhutan"]
+
+for e in range(10):
+    data={"user_id":e,"country":random.choice(countr_list),"amount":1}
+    print("Inserting the datae : ",data)
+    producer.send(topic_name, key=str(e).encode(), value=(data))
+    sleep(0.2)
+
+Consumer:
+----------------
+
+import faust
+
+app=faust.App('demo-transactions_grouping12345678912',broker='localhost:9092',topic_partitions=3) # important: intermediate topic will have the same partition number
+
+class withdrawals_data(faust.Record,serializer='json'):
+    user_id:int
+    country:str
+    amount:int
+
+input_topic = app.topic('transactions_topic2', value_type=withdrawals_data)
+
+country_wise_withdrawals_table = app.Table("country_wise_withdrawals12346789123",default=int) # table refers to above app which has 3 partitions
+
+
+@app.agent(input_topic)
+async def processor(stream):
+    async for message in stream.group_by(withdrawals_data.country):  # this will create an intermediate topic, repartitioning !!!!!!!!!!!!!!!!!!!!!!!!!!
+        print(message)
+        country_wise_withdrawals_table[message.country]+= 1
+        print(country_wise_withdrawals_table.as_ansitable(title='Count Tabled'))
+		
+Start instances:
+------------------
+faust -A main worker -l info
+faust -A main worker -l info --web-port=6067 # 3 partitions but 2 consumers
+
+********** summary:
+- stream.group_by(withdrawals_data.country): redistributing and repartitioning data based on country
+- input topic has multiple partitions and for parallelism purpose, you are running multiple workers
+- initially partition based on property ID
+- but you want to aggregate based on property country
+- repartition before aggregation
