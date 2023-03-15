@@ -1,0 +1,50 @@
+Documentation Link:
+------------------------------------
+https://faust.readthedocs.io/en/latest/
+
+Start Zookeeper:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/zookeeper-server-start.bat F:/kafka_2.12-3.3.1/config/zookeeper.properties
+
+Start Broker: 
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-server-start.bat F:/kafka_2.12-3.3.1/config/server.properties
+
+Start Kafka Topic:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic hello_world --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+
+F:/kafka_2.12-3.3.1/bin/windows/kafka-topics.bat --create --topic send_greetings --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+
+Produce Messages:
+------------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-console-producer.bat --topic hello_world --bootstrap-server localhost:9092
+
+faust -A main worker -l info
+
+
+Start Kakfa Consumer:
+--------------------------
+F:/kafka_2.12-3.3.1/bin/windows/kafka-console-consumer.bat --topic send_greetings --bootstrap-server localhost:9092
+
+
+Code:
+--------------------
+import faust
+
+app=faust.App('demo-streaming',broker='localhost:9092')
+
+class Greeting(faust.Record,serializer='json'):
+    from_name:str
+    to_name:str
+
+input_topic = app.topic('hello_world', value_type=Greeting)
+
+output_topic = app.topic('send_greetings', value_type=str,value_serializer='raw')
+
+@app.agent(input_topic)
+async def processor(stream):
+    async for message in stream:  # consume data from input stream
+        output_tf=f'Greeting from {message.from_name} to {message.to_name}' # process the data
+        print(output_tf)
+        await output_topic.send(value=output_tf) # publish the data to another topic
