@@ -1,0 +1,82 @@
+tumbling window: fixed and non-overlapping time window
+
+****************************************************************************************************************************************************************
+Producer:
+-----------------------
+from time import sleep
+from json import dumps
+from kafka import KafkaProducer
+import random
+import time
+
+
+topic_name='car_speed'
+
+def custom_partitioner(key, all_partitions, available):
+    return int(key.decode('UTF-8'))%len(all_partitions)
+
+
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'],value_serializer=lambda x: dumps(x).encode('utf-8'),
+                         partitioner=custom_partitioner)
+
+list_car=[{"car_id": 1, "car_name": "Honda", "car_speed": 5},
+{"car_id": 2, "car_name": "Tesla", "car_speed": 3},
+{"car_id": 3, "car_name": "Volvo", "car_speed": 8},
+{"car_id": 4, "car_name": "Honda", "car_speed": 9},
+{"car_id": 5, "car_name": "Tesla", "car_speed": 2},
+{"car_id": 6, "car_name": "Volvo", "car_speed": 8},
+{"car_id": 7, "car_name": "Honda", "car_speed": 5},
+{"car_id": 8, "car_name": "Tesla", "car_speed": 7},
+{"car_id": 9, "car_name": "Volvo", "car_speed": 1},
+{"car_id": 10, "car_name": "Volvo", "car_speed": 5},
+{"car_id": 11, "car_name": "Volvo", "car_speed": 2},
+{"car_id": 12, "car_name": "Volvo", "car_speed": 3},
+{"car_id": 13, "car_name": "Volvo", "car_speed": 6},
+{"car_id": 14, "car_name": "Volvo", "car_speed": 5},
+{"car_id": 15, "car_name": "Volvo", "car_speed": 3},
+{"car_id": 16, "car_name": "Volvo", "car_speed": 1},
+{"car_id": 17, "car_name": "Volvo", "car_speed": 8},
+{"car_id": 18, "car_name": "Volvo", "car_speed": 9}]
+
+for e in range(0,len(list_car)):
+    if e in (2,5,8,12,14,17):
+        list_car[e]['capture_time'] = int(time.time())
+        print("Inserting the data : ",list_car[e])
+        producer.send(topic_name, key=str(e).encode(), value=(list_car[e]))
+        sleep(1)         # sleep 1 second to create 1 second window, otherwise data goes in too fast
+    else:
+        list_car[e]['capture_time'] = int(time.time())
+        print("Inserting the data : ", list_car[e])
+        producer.send(topic_name, key=str(e).encode(), value=(list_car[e]))
+        
+****************************************************************************************************************************************************************        
+        
+Consumer:
+-----------------------
+from datetime import datetime, timedelta
+from time import time
+import faust
+
+app = faust.App('demo-transactions_grouping123451', broker='localhost:9092', topic_partitions=1)
+
+
+class withdrawals_data(faust.Record, serializer='json'):
+    car_id: int
+    car_name: str
+    car_speed: int
+    capture_time: int
+
+
+input_topic = app.topic('car_speed', value_type=withdrawals_data)
+
+car_speed_save_table = app.Table("car_speed_counter1", default=int).tumbling(1) # 1 second window
+
+
+@app.agent(input_topic)
+async def processor(stream):
+    async for message in stream:
+        print(message)
+        car_speed_save_table['total'] += message.car_speed
+        print("Current total : ",car_speed_save_table['total'].value())
+
+        
