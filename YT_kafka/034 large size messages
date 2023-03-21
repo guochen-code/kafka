@@ -1,6 +1,9 @@
 architecture:
 producer -> s3 if message size > threshold and send s3 url to consumer -> consumer get the original data via url and process the message
 
+Keep that in mind Kafka works best only if the messages are huge in amount but not in size.
+
+
 Pip Install Commands:
 ----------------------------------
 pip install faust-large-message-serializer -t .
