@@ -1,0 +1,103 @@
+architecture:
+producer -> s3 if message size > threshold and send s3 url to consumer -> consumer get the original data via url and process the message
+
+Pip Install Commands:
+----------------------------------
+pip install faust-large-message-serializer -t .
+pip install kafka-python -t .
+pip install faust-streaming -t .
+
+Producer Code:
+-----------------------
+import faust
+from faust import Record
+import logging
+from faust_large_message_serializer import LargeMessageSerializer, LargeMessageSerializerConfig
+from faust.serializers import codecs
+import random
+import time
+
+data_points=["Hello World","""Thank you so much for the explanation, I am currently building a project,
+ I have never heard of object storage until this video, I always thought its just cloud database + cloud storage,
+  this is such a neat idea !""","Nice presentation. It is very clearly summarized. Thanks a lot",
+             """It seems like the object storage is used mainly for not-so-very-often used static unstructured data. Thus I'm a bit baffled by the recommendation to use it in a video-streaming service. Wouldn't SAN be a better solution if I wanted to design a YouTube-like site?
+And, can we use buckets for a CDN-like solution?
+Thanks!""","Bye","Check where message going","Hi There"]
+
+# model.user
+class UserModel(Record, serializer="s3_json"):
+    comment: str
+
+
+config = LargeMessageSerializerConfig(base_path="s3://irisseta/",
+                                      max_size=100,
+                                      large_message_s3_region="us-east-1",
+                                      large_message_s3_access_key="",
+                                      large_message_s3_secret_key="")
+
+topic_name = "users_s3"
+
+s3_backed_serializer = LargeMessageSerializer(topic_name, config, is_key=False)
+json_serializer = codecs.get_codec("json")
+
+# Here we use json as the first serializer and
+# then we can upload everything to the S3 bucket to handle messages exceeding the configured maximum message size.
+s3_json_serializer = json_serializer | s3_backed_serializer
+
+# config
+logger = logging.getLogger(__name__)
+codecs.register("s3_json", s3_json_serializer)
+app = faust.App("app_id", broker="kafka://localhost:9092")
+users_topic = app.topic(topic_name, value_type=UserModel)
+
+
+
+@app.timer(10.0)
+async def send_users():
+    data_user = {"comment":random.choice(data_points)}
+    print(data_user)
+    user = UserModel(**data_user)
+    await users_topic.send(value=user, value_serializer=s3_json_serializer)
+
+
+Consumer Code:
+------------------------------------
+import faust
+from faust import Record
+import logging
+from faust_large_message_serializer import LargeMessageSerializer, LargeMessageSerializerConfig
+from faust.serializers import codecs
+# model.user
+# model.user
+class UserModel(Record, serializer="s3_json"):
+    comment: str
+
+config = LargeMessageSerializerConfig(base_path="s3://irisseta/",
+                                      max_size=100,
+                                      large_message_s3_region="us-east-1",
+                                      large_message_s3_access_key="",
+                                      large_message_s3_secret_key="")
+
+topic_name = "{}"
+s3_backed_serializer = LargeMessageSerializer(topic_name, config, is_key=False)
+json_serializer = codecs.get_codec("json")
+
+
+s3_json_serializer = json_serializer | s3_backed_serializer
+
+
+logger = logging.getLogger(__name__)
+codecs.register("s3_json", s3_json_serializer)
+app = faust.App("app_id", broker="kafka://localhost:9092")
+users_topic = app.topic(topic_name, value_type=UserModel)
+
+
+@app.agent(users_topic)
+async def users(users):
+    async for user in users:
+        print("The received event is : ",user)
+
+
+
+
+app.main()
